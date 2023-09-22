@@ -111,18 +111,23 @@ std::vector<float>   *el_pt;
 std::vector<float>   *el_px;
 std::vector<float>   *el_py;
 std::vector<float>   *el_pz;
+std::vector<float>   *el_eta;
+std::vector<float>   *el_phi;
 std::vector<float>   *el_e;
 std::vector<int> *el_isTight;
 std::vector<int> *el_isLoose;
-
+std::vector<float>   *el_iso; 
 Int_t mu_n;
 std::vector<float>   *mu_pt;
 std::vector<float>   *mu_px;
 std::vector<float>   *mu_py;
 std::vector<float>   *mu_pz;
+std::vector<float>   *mu_eta;
+std::vector<float>   *mu_phi;
 std::vector<float>   *mu_e;
 std::vector<int> *mu_isTight;
 std::vector<int> *mu_isLoose;
+std::vector<float> *mu_iso_rel;
 
 void setBranches() {
   evt_tree->SetBranchAddress("event", &event_number);
@@ -141,18 +146,24 @@ void setBranches() {
   evt_tree->SetBranchAddress("electron_px", &el_px);
   evt_tree->SetBranchAddress("electron_py", &el_py);
   evt_tree->SetBranchAddress("electron_pz", &el_pz);
+  evt_tree->SetBranchAddress("electron_eta", &el_eta);
+  evt_tree->SetBranchAddress("electron_phi", &el_phi);
   evt_tree->SetBranchAddress("electron_e", &el_e);
-  evt_tree->SetBranchAddress("electron_ismvaTight", &el_isTight);
-  evt_tree->SetBranchAddress("electron_ismvaLoose", &el_isLoose);
+  evt_tree->SetBranchAddress("electron_isTight", &el_isTight);
+  evt_tree->SetBranchAddress("electron_isLoose", &el_isLoose);
+  evt_tree->SetBranchAddress("electron_iso", &el_iso);
 
   evt_tree->SetBranchAddress("numbermuon", &mu_n);
   evt_tree->SetBranchAddress("muon_pt", &mu_pt);
   evt_tree->SetBranchAddress("muon_px", &mu_px);
   evt_tree->SetBranchAddress("muon_py", &mu_py);
   evt_tree->SetBranchAddress("muon_pz", &mu_pz);
+  evt_tree->SetBranchAddress("muon_eta", &mu_eta);
+  evt_tree->SetBranchAddress("muon_phi", &mu_phi);
   evt_tree->SetBranchAddress("muon_e", &mu_e);
   evt_tree->SetBranchAddress("muon_isTight", &mu_isTight);
   evt_tree->SetBranchAddress("muon_isLoose", &mu_isLoose);
+  evt_tree->SetBranchAddress("muon_pfreliso04all", &mu_iso_rel);
 }
 
 // New branches
@@ -160,6 +171,7 @@ float ht;
 Int_t bjet_n;
 Int_t jet_sel_n;
 float deltaRBJet1Lep;
+float deltaRLepClosestBJet;
 float deltaRLep2ndClosestBJet;
 float minDeltaRBJets;
 float deltaR; //Temporary variable
@@ -175,6 +187,7 @@ void declareOutputBranches() {
   out_tree->Branch("bjet_n", &bjet_n, "bjet_n/I");
   out_tree->Branch("HT", &ht, "HT/F");
   // out_tree->Branch("deltaRBJet1Lep", &deltaRBJet1Lep, "deltaRBJet1Lep/F");
+  out_tree->Branch("deltaRLepClosestBJet", &deltaRLepClosestBJet, "deltaRLepClosestBJet/F");
   out_tree->Branch("deltaRLep2ndClosestBJet", &deltaRLep2ndClosestBJet, "deltaRLep2ndClosestBJet/F");
   // out_tree->Branch("minDeltaRBJets", &minDeltaRBJets, "minDeltaRBJets/F");
   out_tree->Branch("LJet_m_plus_RCJet_m_12", &LJet_m_plus_RCJet_m_12, "LJet_m_plus_RCJet_m_12/F");

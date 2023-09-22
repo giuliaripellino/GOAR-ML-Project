@@ -85,15 +85,15 @@ void execute(int event) {
   int mu_loose_n = 0;
   int mu_tight_n = 0;
   for (Long64_t i=0; i<mu_n;i++){
-    if (mu_isTight->at(i) && mu_pt->at(i) > 28) mu_tight_n++;
-    else if (mu_isLoose->at(i)) mu_loose_n++;
+    if (mu_isTight->at(i) && mu_pt->at(i) > 28 && mu_iso_rel->at(i)<0.045) mu_tight_n++;
+    else if (mu_isLoose->at(i) && mu_pt->at(i) > 10) mu_loose_n++;
   }
 
   int el_loose_n = 0;
   int el_tight_n = 0;
   for (Long64_t i=0; i<el_n;i++){
-    if (el_isTight->at(i) && el_pt->at(i) > 28) el_tight_n++;
-    else if (el_isLoose->at(i)) el_loose_n++;
+    if (el_isTight->at(i) && el_pt->at(i) > 28 && el_iso->at(i)/el_pt->at(i)<0.015) el_tight_n++;
+    else if (el_isLoose->at(i) && el_pt->at(i) > 10) el_loose_n++;
   }
 
   h_mu_tight_n->Fill(mu_tight_n);
@@ -168,7 +168,7 @@ void execute(int event) {
   //delta R between (highest-pT) Lepton and the second closest BJet to the lepton  
   float lepton_eta = Leptons.at(0).eta();
   float lepton_phi = Leptons.at(0).phi(); 
-  float deltaRLepClosestBJet = 999;
+  deltaRLepClosestBJet = 999;
   deltaRLep2ndClosestBJet = 999;
   deltaR = 999;
   for (Long64_t i=0; i<bjet_n;i++){
@@ -224,8 +224,6 @@ void execute(int event) {
   }
 
   // Dave variable
-  if (LJets_12.size()==0) { 
-  }
   if (Jets_12.size()>0) { 
     LJet_m_plus_RCJet_m_12 = LJets_12.at(0).m() + Jets_12.at(0).m();
   }
