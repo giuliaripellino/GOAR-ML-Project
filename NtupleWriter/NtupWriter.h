@@ -28,11 +28,14 @@ void setBranches();
 
 TFile *out_file;
 TTree *out_tree;
+std::string output_tag;
 
 // Main function for steering the whole show
 int main(int argc, char **argv) {
 
-  int maxEvents = atoi(argv[2]);
+  int maxEvents = atoi(argv[3]);
+
+  output_tag = argv[2];
 
   TFile *file = TFile::Open(argv[1]);
   if (!file->IsOpen()) {
@@ -75,6 +78,8 @@ int main(int argc, char **argv) {
   finalize();
 
   file->Close();
+
+  std::cout << "Done. Bye Bye!" << std::endl;
 
   return 0;
 }

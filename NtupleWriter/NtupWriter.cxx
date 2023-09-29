@@ -11,8 +11,9 @@ void initialize() {
 
 
 void lateInitialize() {
-
-  out_file = new TFile("ntuple.root", "NEW");
+  char out_file_name[200];
+  sprintf(out_file_name, "ntuple_%s.root", output_tag.c_str());
+  out_file = new TFile(out_file_name, "NEW");
   out_tree = new TTree("Events","Events");
 
   declareOutputBranches();
