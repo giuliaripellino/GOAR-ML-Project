@@ -14,7 +14,6 @@ void initialize() {
 
 void lateInitialize() {
   char out_file_name[200];
-  // sprintf(out_file_name, "ntuple_%s.root", output_tag.c_str());
   snprintf ( out_file_name, 200, "ntuple_%s.root", output_tag.c_str());
   out_file = new TFile(out_file_name, "NEW");
   out_tree = new TTree("Events","Events");
@@ -104,7 +103,7 @@ void execute(int event) {
             [](LepObj a,LepObj b){    
              return (a.four_mom.Pt() > b.four_mom.Pt());});
 
-  // Get eta and phi of highest pt lepton and make sure that is the tight leptons, otherwise do not keep the event
+  // Make sure that the leading lepton is the tight lepton, otherwise do not keep the event
   if (!(Leptons.at(0).is_tight)) return;
   h_cutflow->Fill(4);
 
