@@ -17,7 +17,7 @@
 typedef std::vector<fastjet::PseudoJet> PseudoJetVec;
 
 
-// Classes for easy handling of leptons
+// Class for easy handling of leptons
 class LepObj {
   public:
     TLorentzVector four_mom;
@@ -205,12 +205,9 @@ void declareOutputBranches() {
   out_tree->Branch("bjet_n", &bjet_sel_n, "bjet_n/I");
   out_tree->Branch("lep_n", &lep_sel_n, "lep_n/I");
   out_tree->Branch("HT", &ht, "HT/F");
-  // out_tree->Branch("deltaRBJet1Lep", &deltaRBJet1Lep, "deltaRBJet1Lep/F");
   out_tree->Branch("deltaRLepClosestBJet", &deltaRLepClosestBJet, "deltaRLepClosestBJet/F");
   out_tree->Branch("deltaRLep2ndClosestBJet", &deltaRLep2ndClosestBJet, "deltaRLep2ndClosestBJet/F");
-  // out_tree->Branch("minDeltaRBJets", &minDeltaRBJets, "minDeltaRBJets/F");
   out_tree->Branch("LJet_m_plus_RCJet_m_12", &LJet_m_plus_RCJet_m_12, "LJet_m_plus_RCJet_m_12/F");
-  // out_tree->Branch("min_m_bb", &min_m_bb, "min_m_bb/F");
   out_tree->Branch("bb_m_for_minDeltaR", &bb_m_for_minDeltaR, "bb_m_for_minDeltaR/F");
 }
 

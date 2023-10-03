@@ -26,7 +26,6 @@ void lateInitialize() {
 
 void execute(int event) {
   // Get the event
-  // std::cout << "Get event number " << event << std::endl;
   evt_tree->GetEntry(event);
  
   if (event == 0) lateInitialize();
@@ -143,8 +142,6 @@ void execute(int event) {
   if (bjet_sel_n < 2) return;
   h_cutflow->Fill(6);
 
-  // std::cout << "Event with " << jet_sel_n << " jets, " << bjet_sel_n << " b-jets, " << mu_loose_n+el_loose_n << " loose leptons, " << mu_tight_n+el_tight_n << " tight leptons"<< std::endl;
-
   // -------------------------------------------
   // KINEMATIC VARIABLES based on standard jets
   // -------------------------------------------
@@ -204,7 +201,9 @@ void execute(int event) {
     }
   }
 
-
+  // --------------
+  // RECLUSTERING 
+  // --------------
   for (Long64_t i=0; i<jet_sel_n;i++){
     JetPJs.push_back(fastjet::PseudoJet(Jets.at(i).Px(),Jets.at(i).Py(),Jets.at(i).Pz(),Jets.at(i).E()));
   }
@@ -212,10 +211,6 @@ void execute(int event) {
   for (Long64_t i=0; i<(lep_sel_n);i++){
     LeptonPJs.push_back(fastjet::PseudoJet(Leptons.at(i).four_mom.Px(),Leptons.at(i).four_mom.Py(),Leptons.at(i).four_mom.Pz(),Leptons.at(i).four_mom.E()));
   }
-
-  // --------------
-  // RECLUSTERING 
-  // --------------
 
   double jetrc_ptmin =  5; //from stop analysis 
   fastjet::JetDefinition jetDef{fastjet::antikt_algorithm,12/10.};
@@ -240,7 +235,6 @@ void execute(int event) {
     LJet_m_plus_RCJet_m_12 = LJets_12.at(0).m() + Jets_12.at(0).m();
   }
   else {LJet_m_plus_RCJet_m_12=0;}
-
 
   // Fill the tree
   out_tree->Fill();
