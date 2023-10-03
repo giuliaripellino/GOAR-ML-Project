@@ -7,12 +7,24 @@
 #include "TSystem.h"
 #include "TLorentzVector.h"
 #include <Math/Vector4D.h>
+#include <math.h>
+#include <stdio.h>
 
 #include <fastjet/tools/Filter.hh>
 #include "fastjet/PseudoJet.hh"
 #include "fastjet/ClusterSequence.hh"
 
-typedef std::vector<fastjet::PseudoJet> JetVec;
+typedef std::vector<fastjet::PseudoJet> PseudoJetVec;
+
+
+// Classes for easy handling of leptons
+class LepObj {
+  public:
+    TLorentzVector four_mom;
+    bool is_tight = false;
+    bool is_loose = false;
+};
+
 
 TTree *evt_tree = nullptr;
 TTree *jet_tree = nullptr;
@@ -85,19 +97,18 @@ int main(int argc, char **argv) {
 }
 
 // Histograms
-TH1* h_jet_n = new TH1D("n_jets", "n_jets;n_{jets};Events", 10, -0.5, 9.5);
-TH1* h_el_n = new TH1D("n_electrons", "n_electrons;n_{e};Events", 10, -0.5, 9.5);
-TH1* h_mu_n = new TH1D("n_muons", "n_muons;n_{#mu};Events", 10, -0.5, 9.5);
-TH1* h_lep_n = new TH1D("n_leptons", "n_leptons;n_{l};Events", 10, -0.5, 9.5);
-
-TH1* h_bjet_n = new TH1D("n_bjets", "n_bjets;n_{b-jets} (N-1);Events", 10, -0.5, 9.5);
-TH1* h_el_tight_n = new TH1D("n_electrons_tight", "n_electrons_tight;n_{l}^{tight} (N-1);Events", 10, -0.5, 9.5);
-TH1* h_el_loose_n = new TH1D("n_electrons_loose", "n_electrons_loose;n_{l}^{tight} (N-1);Events", 10, -0.5, 9.5);
-TH1* h_mu_tight_n = new TH1D("n_muons_tight", "n_muons_tight;n_{l}^{tight} (N-1);Events", 10, -0.5, 9.5);
-TH1* h_mu_loose_n = new TH1D("n_muons_loose", "n_muons_loose;n_{l}^{tight} (N-1);Events", 10, -0.5, 9.5);
-TH1* h_lep_tight_n = new TH1D("n_leptons_tight", "n_leptons_tight;n_{l}^{tight} (N-1);Events", 10, -0.5, 9.5);
-TH1* h_lep_loose_n = new TH1D("n_leptons_loose", "n_leptons_loose;n_{l}^{tight} (N-1);Events", 10, -0.5, 9.5);
-TH1* h_cutflow = new TH1D("cutflow", "cutflow;cut;Events", 5, 0.5, 5.5);
+TH1* h_jet_n = new TH1D("n_jets", "Number of jets (N-1);n_{jets};Events", 10, -0.5, 9.5);
+TH1* h_el_n = new TH1D("n_electrons", "Number of electrons;n_{e};Events", 10, -0.5, 9.5);
+TH1* h_mu_n = new TH1D("n_muons", "Number of muons;n_{#mu};Events", 10, -0.5, 9.5);
+TH1* h_lep_n = new TH1D("n_leptons", "Number of leptons;n_{l};Events", 10, -0.5, 9.5);
+TH1* h_bjet_n = new TH1D("n_bjets", "Number of b-tagged jets (N-1);n_{b-jets};Events", 10, -0.5, 9.5);
+TH1* h_el_tight_n = new TH1D("n_electrons_tight", "Number of tight electrons (N-1);n_{e} (tight);Events", 10, -0.5, 9.5);
+TH1* h_el_loose_n = new TH1D("n_electrons_loose", "Number of loose electrons (N-1);n_{e} (loose);Events", 10, -0.5, 9.5);
+TH1* h_mu_tight_n = new TH1D("n_muons_tight", "Number of tight muons (N-1);n_{#mu} (tight);Events", 10, -0.5, 9.5);
+TH1* h_mu_loose_n = new TH1D("n_muons_loose", "Number of loose muons (N-1);n_{#mu} (loose);Events", 10, -0.5, 9.5);
+TH1* h_lep_tight_n = new TH1D("n_leptons_tight", "Number of tight leptons (N-1);n_{lep} (tight);Events", 10, -0.5, 9.5);
+TH1* h_lep_loose_n = new TH1D("n_leptons_loose", "Number of loose leptons (N-1);n_{lep} (loose);Events", 10, -0.5, 9.5);
+TH1* h_cutflow = new TH1D("cutflow", "cutflow;cut;Events", 6, 0.5, 6.5);
 
 // Branches
 ULong64_t event_number;
@@ -168,15 +179,17 @@ void setBranches() {
   evt_tree->SetBranchAddress("muon_e", &mu_e);
   evt_tree->SetBranchAddress("muon_isTight", &mu_isTight);
   evt_tree->SetBranchAddress("muon_isLoose", &mu_isLoose);
-  evt_tree->SetBranchAddress("muon_pfreliso04all", &mu_iso_rel);
+  evt_tree->SetBranchAddress("muon_pfreliso03all", &mu_iso_rel);
 }
 
 // New branches
 float ht;
-Int_t bjet_n;
+Int_t bjet_sel_n;
 Int_t jet_sel_n;
+Int_t lep_sel_n;
 float deltaRBJet1Lep;
 float deltaRLepClosestBJet;
+float deltaRLepClosestJet;
 float deltaRLep2ndClosestBJet;
 float minDeltaRBJets;
 float deltaR; //Temporary variable
@@ -189,7 +202,8 @@ void declareOutputBranches() {
   out_tree->Branch("run", &run_number, "run/I");
   out_tree->Branch("lb", &lb_number, "lb/I");
   out_tree->Branch("jet_n", &jet_sel_n, "jet_n/I");
-  out_tree->Branch("bjet_n", &bjet_n, "bjet_n/I");
+  out_tree->Branch("bjet_n", &bjet_sel_n, "bjet_n/I");
+  out_tree->Branch("lep_n", &lep_sel_n, "lep_n/I");
   out_tree->Branch("HT", &ht, "HT/F");
   // out_tree->Branch("deltaRBJet1Lep", &deltaRBJet1Lep, "deltaRBJet1Lep/F");
   out_tree->Branch("deltaRLepClosestBJet", &deltaRLepClosestBJet, "deltaRLepClosestBJet/F");
