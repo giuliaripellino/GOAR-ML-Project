@@ -66,7 +66,7 @@ void execute(int event) {
     if (!(el_eta->at(i) > -2.5 && el_eta->at(i) < 2.5)) continue;
     LepObj electron;
     electron.four_mom.SetPxPyPzE(el_px->at(i),el_py->at(i),el_pz->at(i),el_e->at(i));
-    if (el_isTight->at(i) && el_pt->at(i) > 28 && el_iso->at(i)/el_pt->at(i)<0.15) {
+    if (el_isTight->at(i) && el_pt->at(i) > 28 && el_iso->at(i)/el_pt->at(i)<0.1) {
       electron.is_tight=true;
       el_tight_n++;
     }
