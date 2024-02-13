@@ -36,4 +36,17 @@ python plot_ControlHistos.py
 python plot_SRVariables.py
 ```
 
+## Converting to parquet
+```
+pyspark
+import ROOT
+import pandas as pd
+root_file = ROOT.TFile.Open("Input/ntuple_em.root")
+tree = root_file.Get("Events")
+dataframe = pd.DataFrame(tree.AsMatrix())
+leaves = tree.GetListOfLeaves()
+leaf_names = [leaf.GetName() for leaf in leaves]
+dataframe.columns = leaf_names
+dataframe.to_parquet("ntuple_em.parquet")
+```
 
