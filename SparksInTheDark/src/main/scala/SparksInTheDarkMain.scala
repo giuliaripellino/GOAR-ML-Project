@@ -1,8 +1,11 @@
 import org.apache.spark.sql.SparkSession
 object SparksInTheDarkMain {
   def main(args: Array[String]): Unit = {
+    println("Starting SparkSession...")
     val spark = SparkSession.builder()
       .appName("SparksInTheDark")
+      .master("local[*]")
+      .config("spark.driver.binAdress","127.0.0.1")
       .getOrCreate()
 
     // Read in data from parquet
@@ -17,5 +20,7 @@ object SparksInTheDarkMain {
     // .  
 
     spark.stop()
+    println("Stopping SparkSession...")
+
   }
 }
