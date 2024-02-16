@@ -17,7 +17,7 @@ sbt clean compile
 ```
 
 ## Running locally
-Running the code locally is done the easiest with ```sbt run``` from ```SparksInTheDark/```.
+Running the code locally _**[in its current state]**_ is done the easiest with ```sbt run``` from ```SparksInTheDark/```.
 
 ## Running remote
 In order to run the code on a remote cluster, 
