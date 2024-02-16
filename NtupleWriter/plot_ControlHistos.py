@@ -1,6 +1,6 @@
 import ROOT
 
-inFile = ROOT.TFile("ntuple_test.root")
+inFile = ROOT.TFile("../Samples/ntuples/ntuple_em_merge.root")
 
 histos =  ["n_jets","n_bjets", "n_electrons", "n_muons", "n_leptons","n_electrons_tight", "n_electrons_loose","n_muons_tight","n_muons_loose","n_leptons_tight","n_leptons_loose","cutflow"]
 
@@ -20,6 +20,7 @@ for histo in histos:
 		h.GetXaxis().SetBinLabel(4,"lep0 is tight")
 		h.GetXaxis().SetBinLabel(5,"n_{jets} #geq 4")
 		h.GetXaxis().SetBinLabel(6,"n_{b-jets} #geq 2")
+		h.GetBinContent(1)
 
 		print(h.GetBinContent(1))
 	h.Draw()

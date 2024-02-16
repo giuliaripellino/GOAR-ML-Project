@@ -46,9 +46,9 @@ void execute(int event) {
   for (Long64_t i=0; i<mu_n;i++){
     if (!(mu_eta->at(i) > -2.5 && mu_eta->at(i) < 2.5)) continue;
     LepObj muon;
-    muon.four_mom.SetPxPyPzE(mu_px->at(i),mu_py->at(i),mu_pz->at(i),mu_e->at(i));
-    if (mu_isTight->at(i) && mu_pt->at(i) > 28 && mu_iso_rel->at(i)<0.15) {
-      mu_sel_n++;
+    muon.four_mom.SetPtEtaPhiM(mu_pt->at(i),mu_eta->at(i),mu_phi->at(i),mu_m);
+    if (mu_isTight->at(i) && mu_pt->at(i)>28 ){ //&& mu_iso_rel->at(i)<0.15) {
+      mu_tight_n++;
       muon.is_tight=true;
     }
     else if (mu_isLoose->at(i) && mu_pt->at(i) > 10) {
@@ -65,8 +65,8 @@ void execute(int event) {
   for (Long64_t i=0; i<el_n;i++){
     if (!(el_eta->at(i) > -2.5 && el_eta->at(i) < 2.5)) continue;
     LepObj electron;
-    electron.four_mom.SetPxPyPzE(el_px->at(i),el_py->at(i),el_pz->at(i),el_e->at(i));
-    if (el_isTight->at(i) && el_pt->at(i) > 28 && el_iso->at(i)/el_pt->at(i)<0.1) {
+    electron.four_mom.SetPtEtaPhiM(el_pt->at(i),el_eta->at(i),el_phi->at(i),el_m);
+    if (el_isTight->at(i) && el_pt->at(i) > 28 ){ //&& el_iso->at(i)/el_pt->at(i)<0.1) {
       electron.is_tight=true;
       el_tight_n++;
     }
@@ -95,7 +95,7 @@ void execute(int event) {
   h_cutflow->Fill(2);
 
   // Veto additional loose leptons
-  if (!((mu_loose_n+el_loose_n)==0)) return;
+  // if (!((mu_loose_n+el_loose_n)==0)) return; 
   h_cutflow->Fill(3);
 
   // Sort leptons by pt

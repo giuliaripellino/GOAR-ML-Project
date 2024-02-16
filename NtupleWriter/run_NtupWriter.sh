@@ -6,11 +6,12 @@ g++ -g3 -o NtupWriter NtupWriter.cxx `root-config --cflags --libs`  `fastjet-ins
 echo "Compilation done!"
 
 #Test run
-./NtupWriter "../myoutput_electron_merge.root" "test" -1
+# ./NtupWriter "../Samples/CMSfiles/Electron/myoutput_electron_0.root" "test" -1 
+./NtupWriter "../Samples/Signal/SU2L_35_500_flat.root" "SU2L_35_500" -1 true
 
 # # Run over multiple files in a directory
 # file_prefix="myoutput_"
-# file_dir="../Samples/Electron/"
+# file_dir="../Samples/CMSfiles/Electron/"
 # for line in $(ls $file_dir$file_prefix*); do 
 #     # echo "$line"
 #     tag="${line/$file_dir$file_prefix/}"
