@@ -1,7 +1,7 @@
 Scripts to analyze CMS open data. 
 
 ## Make small flat ntuples
-Runs on output from [PhysObjectExtractor](https://github.com/cms-opendata-analyses/PhysObjectExtractorTool/tree/master/PhysObjectExtractor).
+Runs on output from [PhysObjectExtractor](https://github.com/cms-opendata-analyses/PhysObjectExtractorTool/tree/master/PhysObjectExtractor). For signal files from delphes, run the scripts in SignalFixer first.
 
 ### Setup
 
