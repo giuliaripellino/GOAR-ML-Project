@@ -41,12 +41,13 @@ void setBranches();
 TFile *out_file;
 TTree *out_tree;
 std::string output_tag;
+bool isSignal;
 
 // Main function for steering the whole show
 int main(int argc, char **argv) {
 
   int maxEvents = atoi(argv[3]);
-
+  isSignal = argv[4];
   output_tag = argv[2];
 
   TFile *file = TFile::Open(argv[1]);
@@ -57,22 +58,22 @@ int main(int argc, char **argv) {
 
   std::cout << "After opening file" << std::endl;
   // Get nominal tree
-  file->GetObject("myevents/Events", evt_tree);
-  file->GetObject("myjets/Events", jet_tree);
-  file->GetObject("myelectrons/Events", el_tree);
-  file->GetObject("mymuons/Events", mu_tree);
-  if (!( (evt_tree->GetEntries() == jet_tree->GetEntries()) && (jet_tree->GetEntries() == el_tree->GetEntries()) && (el_tree->GetEntries() == mu_tree->GetEntries()) ) ) {
-    printf("DISASTER! Different number of events in trees. Exiting...\n");
-    exit (EXIT_FAILURE);
+  if(isSignal){
+    file->GetObject("Events", evt_tree);
   }
+  else{
+    file->GetObject("myevents/Events", evt_tree);
+    file->GetObject("myjets/Events", jet_tree);
+    file->GetObject("myelectrons/Events", el_tree);
+    file->GetObject("mymuons/Events", mu_tree);
+    // Friend the trees
+    std::cout << "Now friending the trees" << std::endl;
+    evt_tree->AddFriend(jet_tree);
+    evt_tree->AddFriend(el_tree);
+    evt_tree->AddFriend(mu_tree);
+  }
+  std::cout << "Done" << std::endl;
   if (evt_tree->GetEntries() == 0) return 1; 
-
-  std::cout << "Now friending the trees" << std::endl;
-
-  // Friend the trees
-  evt_tree->AddFriend(jet_tree);
-  evt_tree->AddFriend(el_tree);
-  evt_tree->AddFriend(mu_tree);
 
   std::cout << "Setting branches" << std::endl;
   setBranches();
@@ -113,7 +114,6 @@ TH1* h_cutflow = new TH1D("cutflow", "cutflow;cut;Events", 6, 0.5, 6.5);
 // Branches
 ULong64_t event_number;
 Int_t run_number;
-UInt_t lb_number;
 
 Int_t jet_n;
 std::vector<float>   *jet_pt;
@@ -124,31 +124,25 @@ std::vector<double>   *jet_btag;
 
 Int_t el_n;
 std::vector<float>   *el_pt;
-std::vector<float>   *el_px;
-std::vector<float>   *el_py;
-std::vector<float>   *el_pz;
 std::vector<float>   *el_eta;
 std::vector<float>   *el_phi;
-std::vector<float>   *el_e;
 std::vector<int> *el_isTight;
 std::vector<int> *el_isLoose;
 std::vector<float>   *el_iso; 
+float el_m = 0.511;
+
 Int_t mu_n;
 std::vector<float>   *mu_pt;
-std::vector<float>   *mu_px;
-std::vector<float>   *mu_py;
-std::vector<float>   *mu_pz;
 std::vector<float>   *mu_eta;
 std::vector<float>   *mu_phi;
-std::vector<float>   *mu_e;
 std::vector<int> *mu_isTight;
 std::vector<int> *mu_isLoose;
 std::vector<float> *mu_iso_rel;
+float mu_m = 105.66;
 
 void setBranches() {
   evt_tree->SetBranchAddress("event", &event_number);
   evt_tree->SetBranchAddress("run", &run_number);
-  evt_tree->SetBranchAddress("luminosityBlock", &lb_number);
 
   evt_tree->SetBranchAddress("numberjet", &jet_n);
   evt_tree->SetBranchAddress("jet_btag", &jet_btag);
@@ -159,24 +153,16 @@ void setBranches() {
 
   evt_tree->SetBranchAddress("numberelectron", &el_n);
   evt_tree->SetBranchAddress("electron_pt", &el_pt);
-  evt_tree->SetBranchAddress("electron_px", &el_px);
-  evt_tree->SetBranchAddress("electron_py", &el_py);
-  evt_tree->SetBranchAddress("electron_pz", &el_pz);
   evt_tree->SetBranchAddress("electron_eta", &el_eta);
   evt_tree->SetBranchAddress("electron_phi", &el_phi);
-  evt_tree->SetBranchAddress("electron_e", &el_e);
   evt_tree->SetBranchAddress("electron_isTight", &el_isTight);
   evt_tree->SetBranchAddress("electron_isLoose", &el_isLoose);
   evt_tree->SetBranchAddress("electron_iso", &el_iso);
 
   evt_tree->SetBranchAddress("numbermuon", &mu_n);
   evt_tree->SetBranchAddress("muon_pt", &mu_pt);
-  evt_tree->SetBranchAddress("muon_px", &mu_px);
-  evt_tree->SetBranchAddress("muon_py", &mu_py);
-  evt_tree->SetBranchAddress("muon_pz", &mu_pz);
   evt_tree->SetBranchAddress("muon_eta", &mu_eta);
   evt_tree->SetBranchAddress("muon_phi", &mu_phi);
-  evt_tree->SetBranchAddress("muon_e", &mu_e);
   evt_tree->SetBranchAddress("muon_isTight", &mu_isTight);
   evt_tree->SetBranchAddress("muon_isLoose", &mu_isLoose);
   evt_tree->SetBranchAddress("muon_pfreliso03all", &mu_iso_rel);
@@ -200,7 +186,6 @@ float LJet_m_plus_RCJet_m_12;
 void declareOutputBranches() {
   out_tree->Branch("event", &event_number, "event/I");
   out_tree->Branch("run", &run_number, "run/I");
-  out_tree->Branch("lb", &lb_number, "lb/I");
   out_tree->Branch("jet_n", &jet_sel_n, "jet_n/I");
   out_tree->Branch("bjet_n", &bjet_sel_n, "bjet_n/I");
   out_tree->Branch("lep_n", &lep_sel_n, "lep_n/I");
