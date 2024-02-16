@@ -12,8 +12,17 @@ Compile / packageBin / packageOptions +=
     "Implementation-Version" -> version.value
   )
 
+lazy val root = (project in file("."))
+  .settings(
+    name := "SparksInTheDark",
+    assemblyJarName in assembly := "SparksInTheDark-fatjar.jar"
+  )
 
 //ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
+assemblyMergeStrategy in assembly := {
+  case PathList("META-INF", _*) => MergeStrategy.discard
+  case _                        => MergeStrategy.first
+}
 
 // fork in test := true
 test / fork := true
