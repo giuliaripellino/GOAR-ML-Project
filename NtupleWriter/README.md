@@ -1,7 +1,7 @@
 Scripts to analyze CMS open data. 
 
 ## Make small flat ntuples
-Runs on output from [PhysObjectExtractor](https://github.com/cms-opendata-analyses/PhysObjectExtractorTool/tree/master/PhysObjectExtractor). For signal files from delphes, run the scripts in SignalFixer first.
+Runs on output from [PhysObjectExtractor](https://github.com/cms-opendata-analyses/PhysObjectExtractorTool/tree/master/PhysObjectExtractor). For signal files from delphes, run the fixupSignal script first.
 
 ### Setup
 
@@ -34,6 +34,16 @@ python plot_ControlHistos.py
 ```
 ```
 python plot_SRVariables.py
+```
+
+## Handling signal files 
+Signal files from Delphes can be converted to the same format as the CMS open data.
+
+```
+git clone https://github.com/delphes/delphes.git
+cd delphes
+make
+root -l ../fixupSignal.cxx
 ```
 
 ## Converting to parquet
