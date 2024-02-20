@@ -20,7 +20,15 @@ sbt clean compile
 Running the code locally _**[in its current state]**_ is done the easiest with ```sbt run``` from ```SparksInTheDark/```.
 
 ## Running remote
-In order to run the code on a remote cluster, one firstly needs to assemble the code into a ```.jar``` file. This is done by ```sbt clean compile assembly```. The name of this ```.jar``` file is defined in ```build.sbt```. 
+In order to run the code on a remote cluster, one firstly needs to assemble the code into a ```.jar``` file. This is done by 
+```
+sbt clean compile assembly
+```
+The name of this ```.jar``` file is defined in ```build.sbt```. Note that everytime one edits the ```build.sbt``` file, one should
+```
+sbt reload
+```
+for the effects to take place.
 
 The command to actually submit the code to the cluster is (see documentation [here](https://cloud.google.com/sdk/gcloud/reference/dataproc/jobs/submit/spark):
 ```
