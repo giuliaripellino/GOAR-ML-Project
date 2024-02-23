@@ -6,14 +6,23 @@ ThisBuild / scalaVersion := "2.12.15"
 scalaVersion := "2.12.15"
 
 
-packageOptions in (Compile, packageBin) += 
+Compile / packageBin / packageOptions +=
   Package.ManifestAttributes(
     "SparksInTheDark" -> "src/main/scala/SparksInTheDarkMain",
     "Implementation-Version" -> version.value
   )
 
+lazy val root = (project in file("."))
+  .settings(
+    name := "SparksInTheDark",
+    assemblyJarName in assembly := "SparksInTheDark-fatjar.jar"
+  )
 
 //ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
+assemblyMergeStrategy in assembly := {
+  case PathList("META-INF", _*) => MergeStrategy.discard
+  case _                        => MergeStrategy.first
+}
 
 // fork in test := true
 test / fork := true
