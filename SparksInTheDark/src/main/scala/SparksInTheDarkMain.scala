@@ -11,7 +11,7 @@ object SparksInTheDarkMain {
     // Read in data from parquet
     val df_background = spark.read
       .parquet("gs://sitd-parquet-bucket/ntuple_em_v2.parquet")
-
+    
     df_background.show()
     df_background.printSchema()
 
