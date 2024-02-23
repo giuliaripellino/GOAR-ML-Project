@@ -40,7 +40,5 @@ A bottleneck which appears with this way of submission is that you have to ```sb
 From ```SparksInTheDark/```
 ```
 sbt clean compile assembly
-gcloud dataproc jobs submit spark --cluster='cluster-sparks-in-the-dark' \ 
---region='europe-west4' \
---jar='target/scala-2.12/JARNAME.jar'
+gcloud dataproc jobs submit spark --cluster='cluster-sparks-in-the-dark' --region='europe-west4' --jar='target/scala-2.12/JARNAME.jar'
 ```
