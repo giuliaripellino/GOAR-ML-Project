@@ -10,12 +10,13 @@ object SparksInTheDarkMain {
 
     // Read in data from parquet
     val df_background = spark.read
-      .parquet("data/ntuple_em_olga.parquet")
+      .parquet("data/ntuple_em_v2.parquet")
     df_background.show()
 
     // WRONG SIGNAL SAMPLE
     val df_signal = spark.read
       .parquet("data/ntuple_SU2L_25_500_v2.parquet")
+    df_signal.show()
 
     // Function which filters based on pre-defined pre-selection & selects the interesting variables
     def filterAndSelect(df: DataFrame): DataFrame = {
@@ -27,11 +28,19 @@ object SparksInTheDarkMain {
     val filtered_background = filterAndSelect(df_background)
     filtered_background.show()
 
+    val filtered_signal = filterAndSelect(df_signal)
+    filtered_signal.show()
+
     // We can also see how many events we had before and after filtering:
-    val events_pre_filter = df_background.count()
-    val events_post_filter = filtered_background.count()
-    println(s"Events before filter: ${events_pre_filter}")
-    println(s"Events after filter: ${events_post_filter}")
+    val original_bkg_count = df_background.count()
+    val filtered_bkg_count = filtered_background.count()
+    val original_signal_count = df_signal.count()
+    val filtered_signal_count = filtered_signal.count()
+
+    println(s"# Background events before filter: ${original_bkg_count}")
+    println(s"# Background events after filter: ${filtered_bkg_count}")
+    println(s"# Signal events before filter: ${original_signal_count}")
+    println(s"# Signal events after filter: ${filtered_signal_count}")
 
     // Create histogram as outlined in SparkDensityTree-Introduction.scala
 
