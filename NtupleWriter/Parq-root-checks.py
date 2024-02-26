@@ -16,6 +16,22 @@ def parq_to_df(parquet_file_path:str):
 ## Converting .root to dataframe
 
 df = root_to_df(f"{save_file_name}.root")
+
+if (df["run"] == 9999).all():
+    print("SIGNAL! Applying weights... ")
+    columns_to_weight = ["HT","LJet_m_plus_RCJet_m_12","bb_m_for_minDeltaR","deltaRLep2ndClosestBJet","deltaRLepClosestBJet"]
+
+    Lumi = 2.256382381 #1/fb
+
+    sigma = 18.92 #fb
+
+    scaled_events = Lumi * sigma
+
+    weigth = scaled_events/50000
+    
+    for col in columns_to_weight:
+        df[col] = df[col]*weigth
+
 df.to_parquet(f"{save_file_name}.parquet")
 
 
