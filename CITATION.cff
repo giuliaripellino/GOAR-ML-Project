@@ -1,0 +1,27 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: SparksInTheDark
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Olga
+    family-names: Sunneborn Gudnadottir
+    email: olga.sunneborn.gudnadottir@cern.ch;
+    affiliation: Uppsala University
+  - given-names: Axel
+    family-names: Gallén
+    email: axel.lars.gallen@cern.ch
+    affiliation: Uppsala University
+  - given-names: Giulia
+    family-names: Ripellino
+    email: giulia.ripellino@cern.ch
+    affiliation: Uppsala University
+  - given-names: Rebeca
+    family-names: Gonzalez Suarez
+    email: rebeca.gonzalez.suarez@cern.ch
+    affiliation: Uppsala University
+repository-code: 'https://github.com/giuliaripellino/GOAR-ML-Project'
