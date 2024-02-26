@@ -1,6 +1,7 @@
 import org.apache.spark.sql.{DataFrame, SparkSession}
 object SparksInTheDarkMain {
   def main(args: Array[String]): Unit = {
+    println("Starting SparkSession...")
     val spark = SparkSession.builder()
       .appName("SparksInTheDark")
       // .master & .config commands are for local running
@@ -10,12 +11,14 @@ object SparksInTheDarkMain {
 
     // Read in data from parquet
     val df_background = spark.read
-      .parquet("data/ntuple_em_v2.parquet")
+      .parquet("gs://sitd-parquet-bucket/ntuple_em_v2.parquet")
+    
     df_background.show()
 
     // WRONG SIGNAL SAMPLE
     val df_signal = spark.read
-      .parquet("data/ntuple_SU2L_25_500_v2.parquet")
+      .parquet("gs://sitd-parquet-bucket/ntuple_SU2L_25_500_v2.parquet")
+
     df_signal.show()
 
     // Function which filters based on pre-defined pre-selection & selects the interesting variables
@@ -52,5 +55,7 @@ object SparksInTheDarkMain {
     // .  
 
     spark.stop()
+    println("Stopping SparkSession...")
+
   }
 }
