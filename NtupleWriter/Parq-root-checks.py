@@ -27,7 +27,7 @@ if (df["run"] == 9999).all():
 
     scaled_events = Lumi * sigma
 
-    weigth = scaled_events/50000
+    weigth = scaled_events/50000 ## 50k is the number of generated events
     
     for col in columns_to_weight:
         df[col] = df[col]*weigth
