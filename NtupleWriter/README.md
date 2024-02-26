@@ -47,6 +47,7 @@ root -l ../fixupSignal.cxx
 ```
 
 ## Converting to parquet
+### 1.
 ```
 pyspark
 import ROOT
@@ -59,4 +60,7 @@ leaf_names = [leaf.GetName() for leaf in leaves]
 dataframe.columns = leaf_names
 dataframe.to_parquet("ntuple_em.parquet")
 ```
+
+### 2. 
+One can run ```Parq-root-checks.py``` and give the .root file as input (top of the python file), which gives an .parquet file. If the input is signal (ATLAS convention where run=9999 for generated signal) **Is this correct?**, the signal is scaled. This script also checks that the created .parquet and the original .root file equal. 
 
