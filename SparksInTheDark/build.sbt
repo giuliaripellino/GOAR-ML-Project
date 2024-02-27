@@ -15,11 +15,11 @@ Compile / packageBin / packageOptions +=
 lazy val root = (project in file("."))
   .settings(
     name := "SparksInTheDark",
-    assemblyJarName in assembly := "SparksInTheDark-fatjar.jar"
+    assembly / assemblyJarName := "SparksInTheDark-fatjar.jar"
   )
 
 //ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
-assemblyMergeStrategy in assembly := {
+assembly / assemblyMergeStrategy := {
   case PathList("META-INF", _*) => MergeStrategy.discard
   case _                        => MergeStrategy.first
 }
