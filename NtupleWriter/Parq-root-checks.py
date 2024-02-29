@@ -1,7 +1,8 @@
 import ROOT
 import pandas as pd 
 
-save_file_name = 'ntuple_SU2L_25_500_v2' ## WITHOUT .root / .parquet
+input_file_name = 'ntuple_SU2L_25_500_v2' ## WITHOUT .root / .parquet
+save_file_name = 'ntuple_SU2L_25_500_weighted_v2' ## WITHOUT .root / .parquet
 
 def root_to_df(root_file_path:str):
     df = pd.DataFrame(ROOT.RDataFrame("Events",root_file_path).AsNumpy())
@@ -15,7 +16,7 @@ def parq_to_df(parquet_file_path:str):
 
 ## Converting .root to dataframe
 
-df = root_to_df(f"{save_file_name}.root")
+df = root_to_df(f"{input_file_name}.root")
 
 if (df["run"] == 9999).all():
     print("SIGNAL! Applying weights... ")
@@ -27,7 +28,7 @@ if (df["run"] == 9999).all():
 
     scaled_events = Lumi * sigma
 
-    weigth = scaled_events/50000 ## 50k is the number of generated events
+    weigth = scaled_events/50000
     
     for col in columns_to_weight:
         df[col] = df[col]*weigth
