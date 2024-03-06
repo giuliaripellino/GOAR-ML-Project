@@ -6,11 +6,11 @@ import co.wiklund.disthist.MergeEstimatorFunctions._
 import co.wiklund.disthist.HistogramFunctions._
 import co.wiklund.disthist.MDEFunctions._
 
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.rdd.RDD
 import org.apache.spark.mllib.random.RandomRDDs.normalVectorRDD
 import org.apache.spark.mllib.linalg.{Vector => MLVector, _}
 import org.apache.spark.sql.{DataFrame, SparkSession,SQLContext,SQLImplicits}
+import org.apache.spark.{SparkContext,SparkConf}
 object SparksInTheDarkMain {
   def main(args: Array[String]): Unit = {
     println("Starting SparkSession...")
@@ -20,6 +20,10 @@ object SparksInTheDarkMain {
       .master("local[*]")
       .config("spark.driver.binAdress","127.0.0.1")
       .getOrCreate()
+    val sc: SparkContext = spark.sparkContext
+    val sqlContext = new SQLContext(sc)
+    import sqlContext.implicits._
+
     // Read in data from parquet
     val df_background = spark.read
       .parquet("gs://sitd-parquet-bucket/ntuple_em_v2.parquet")
