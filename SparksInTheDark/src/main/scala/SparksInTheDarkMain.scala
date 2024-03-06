@@ -1,4 +1,16 @@
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import co.wiklund.disthist.SpatialTreeFunctions.widestSideTreeRootedAt
+import co.wiklund.disthist.Types.Count
+import co.wiklund.disthist.NodeLabel
+import co.wiklund.disthist._
+import co.wiklund.disthist.MergeEstimatorFunctions._
+import co.wiklund.disthist.HistogramFunctions._
+import co.wiklund.disthist.MDEFunctions._
+
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.rdd.RDD
+import org.apache.spark.mllib.random.RandomRDDs.normalVectorRDD
+import org.apache.spark.mllib.linalg.{Vector => MLVector, _}
+import org.apache.spark.sql.{DataFrame, SparkSession,SQLContext,SQLImplicits}
 object SparksInTheDarkMain {
   def main(args: Array[String]): Unit = {
     println("Starting SparkSession...")
@@ -8,7 +20,6 @@ object SparksInTheDarkMain {
       .master("local[*]")
       .config("spark.driver.binAdress","127.0.0.1")
       .getOrCreate()
-
     // Read in data from parquet
     val df_background = spark.read
       .parquet("gs://sitd-parquet-bucket/ntuple_em_v2.parquet")
@@ -46,6 +57,70 @@ object SparksInTheDarkMain {
     println(s"# Signal events after filter: ${filtered_signal_count}")
 
     // Create histogram as outlined in SparkDensityTree-Introduction.scala
+
+    val dimensions : Int = df_signal.columns.length // The amount of variables we have
+    val len_data : Int = 6
+    val numPartitions : Int = 32
+    val trainSize : Long = math.pow(10, len_data).toLong
+    println(trainSize)
+
+
+    val trainingRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize, dimensions, numPartitions, 1230568)
+    val validationSize = trainSize/2
+    val validationRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, validationSize, dimensions, numPartitions, 5465694)
+
+    var rectTrain : Rectangle = RectangleFunctions.boundingBox(trainingRDD)
+    var rectValidation : Rectangle = RectangleFunctions.boundingBox(validationRDD)
+    val rootBox : Rectangle = RectangleFunctions.hull(rectTrain, rectValidation)
+
+    val tree : WidestSplitTree = widestSideTreeRootedAt(rootBox)
+
+    val finestResSideLength = 1e-2
+    val finestResDepth : Int = tree.descendBoxPrime(Vectors.dense(rootBox.low.toArray)).dropWhile(_._2.widths.max > finestResSideLength).head._1.depth
+
+    var countedTrain : RDD[(NodeLabel, Count)] = quickToLabeled(tree, finestResDepth, trainingRDD).cache
+    var countedValidation : RDD[(NodeLabel, Count)] = quickToLabeledNoReduce(tree, finestResDepth, validationRDD)
+
+    val sampleSizeHint : Int = 1000
+
+    val partitioner : SubtreePartitioner = new SubtreePartitioner(numPartitions, countedTrain, sampleSizeHint)
+
+    implicit val ordering : Ordering[NodeLabel] = leftRightOrd
+    val subtreeRDD = countedTrain.repartitionAndSortWithinPartitions(partitioner)
+
+    val depthLimit = partitioner.maxSubtreeDepth
+
+    val minimumCountLimit : Int = 400
+    val countLimit = getCountLimit(countedTrain, minimumCountLimit)
+
+    val finestHistogram : Histogram = mergeLeavesHistogram(tree, subtreeRDD, countLimit, depthLimit)
+    countedTrain.unpersist()
+
+    val kInMDE = 10
+
+    val numCores = 4
+
+    val minimumDistanceHistogram : Histogram = getMDE(finestHistogram, countedValidation, validationSize, kInMDE, numCores, true)
+
+    val minimumDistanceDensity : DensityHistogram = toDensityHistogram(minimumDistanceHistogram)
+
+    val density : DensityHistogram = minimumDistanceDensity.normalize
+
+    /* TODO: write a folder to save data to */
+    val pathToDataFolder = "data/"
+
+    val rootPath = s"${pathToDataFolder}/introduction"
+    val treePath = rootPath + "spatialTree"
+    val finestResDepthPath = rootPath + "finestRes"
+    val mdeHistPath = rootPath + "mdeHist"
+
+    Vector(tree.rootCell.low, tree.rootCell.high).toIterable.toSeq.toDS.write.mode("overwrite").parquet(treePath)
+    Array(finestResDepth).toIterable.toSeq.toDS.write.mode("overwrite").parquet(finestResDepthPath)
+    minimumDistanceHistogram.counts.toIterable.toSeq.toDS.write.mode("overwrite").parquet(mdeHistPath)
+    countedValidation.unpersist()
+    // Write out csv file on the form
+    // deltaR_min_bb	<	2.7
+    // delta_R_min_bb > 0.5
 
     // Write out csv file on the form 
     // deltaR_min_bb	<	2.7
