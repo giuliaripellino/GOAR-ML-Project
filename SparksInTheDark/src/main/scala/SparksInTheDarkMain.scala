@@ -9,7 +9,7 @@ import co.wiklund.disthist.MDEFunctions._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.mllib.random.RandomRDDs.normalVectorRDD
 import org.apache.spark.mllib.linalg.{Vector => MLVector, _}
-import org.apache.spark.sql.{DataFrame, SparkSession,SQLContext,SQLImplicits}
+import org.apache.spark.sql.{DataFrame, SparkSession,SQLContext,SQLImplicits, Row}
 import org.apache.spark.{SparkContext,SparkConf}
 object SparksInTheDarkMain {
   def main(args: Array[String]): Unit = {
@@ -26,14 +26,14 @@ object SparksInTheDarkMain {
 
     // Read in data from parquet
     val df_background = spark.read
-      .parquet("gs://sitd-parquet-bucket/ntuple_em_v2.parquet")
-    
+      //.parquet("gs://sitd-parquet-bucket/ntuple_em_v2.parquet")
+      .parquet("data/ntuple_em_v2.parquet")
     df_background.show()
 
     // WRONG SIGNAL SAMPLE
     val df_signal = spark.read
-      .parquet("gs://sitd-parquet-bucket/ntuple_SU2L_25_500_v2.parquet")
-
+      //.parquet("gs://sitd-parquet-bucket/ntuple_SU2L_25_500_v2.parquet")
+      .parquet("data/ntuple_SU2L_25_500_v2.parquet")
     df_signal.show()
 
     // Function which filters based on pre-defined pre-selection & selects the interesting variables
@@ -68,10 +68,30 @@ object SparksInTheDarkMain {
     val trainSize : Long = math.pow(10, len_data).toLong
     println(trainSize)
 
-
-    val trainingRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize, dimensions, numPartitions, 1230568)
+    // Using the randomized values
+    val old_trainingRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize, dimensions, numPartitions, 1230568)
+    old_trainingRDD.take(5).foreach(println)
     val validationSize = trainSize/2
-    val validationRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, validationSize, dimensions, numPartitions, 5465694)
+    val old_validationRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, validationSize, dimensions, numPartitions, 5465694)
+    // Using our background as input
+    // Define case class
+    //val trainingRDD : RDD[MLVector] = filtered_background.select("deltaRLep2ndClosestBJet").as[Double].collect()
+    //val validationRDD : RDD[MLVector] = filtered_background.select("LJet_m_plus_RCJet_m_12").as[Double].collect()
+
+    //trainingRDD.take(5).foreach(println)
+    //sys.exit(0)
+
+    val trainingRDD: RDD[MLVector] = filtered_background.map {
+      case Row(col1: Double, col2: Double, col3: Double, _*) =>
+        // Adjust the types according to your actual columns' types
+        (col1, col2, col3)
+    }
+
+    val validationRDD: RDD[MLVector] = filtered_background.map {
+      case Row(col1: Double, col2: Double, col3: Double, _*) =>
+        // Adjust the types according to your actual columns' types
+        (col1, col2, col3)
+    }
 
     var rectTrain : Rectangle = RectangleFunctions.boundingBox(trainingRDD)
     var rectValidation : Rectangle = RectangleFunctions.boundingBox(validationRDD)
