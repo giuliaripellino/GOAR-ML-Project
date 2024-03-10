@@ -62,11 +62,6 @@ object SparksInTheDarkMain {
         }
       }
     val backgroundRDD = df_to_RDD(filtered_background)
-    //val backgroundRDD = filtered_background.rdd.map { row =>
-    //  val deltaRLep2ndClosestBJet = row.getAs[Float]("deltaRLep2ndClosestBJet").toDouble
-    //  val lJet_m_plus_RCJet_m_12 = row.getAs[Float]("LJet_m_plus_RCJet_m_12").toDouble
-    //  val bb_m_for_minDeltaR = row.getAs[Float]("bb_m_for_minDeltaR").toDouble
-    //  Vectors.dense(deltaRLep2ndClosestBJet, lJet_m_plus_RCJet_m_12, bb_m_for_minDeltaR)}
 
     println("Showing the first 10 RDD vectors")
     backgroundRDD.take(10).foreach(println)
