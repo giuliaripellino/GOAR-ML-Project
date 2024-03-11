@@ -1,8 +1,18 @@
 import org.apache.spark.rdd.RDD
 import org.apache.spark.mllib.random.RandomRDDs.normalVectorRDD
 import org.apache.spark.mllib.linalg.{Vectors, Vector => MLVector, _}
-import org.apache.spark.sql.{DataFrame, Row, SQLContext, SQLImplicits, SparkSession}
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.{DataFrame, Row, SQLContext, SparkSession}
+import org.apache.spark.{SparkContext,_}
+import co.wiklund.disthist._
+import co.wiklund.disthist.Types._
+import co.wiklund.disthist.RectangleFunctions._
+import co.wiklund.disthist.MDEFunctions._
+import co.wiklund.disthist.LeafMapFunctions._
+import co.wiklund.disthist.SpatialTreeFunctions._
+import co.wiklund.disthist.HistogramFunctions._
+import co.wiklund.disthist.TruncationFunctions._
+import co.wiklund.disthist.MergeEstimatorFunctions._
+import co.wiklund.disthist.SubtreePartitionerFunctions._
 object SparksInTheDarkMain {
   def main(args: Array[String]): Unit = {
     println("Starting SparkSession...")
@@ -12,7 +22,9 @@ object SparksInTheDarkMain {
       .master("local[*]")
       .config("spark.driver.binAdress","127.0.0.1")
       .getOrCreate()
-
+    val sc: SparkContext = spark.sparkContext
+    val sqlContext = new SQLContext(sc)
+    import sqlContext.implicits._
     // Read in data from parquet
     val df_background = spark.read
       //.parquet("gs://sitd-parquet-bucket/ntuple_em_v2.parquet")
@@ -51,6 +63,8 @@ object SparksInTheDarkMain {
     val trainSize : Long = math.pow(10, 3).toLong
     val trainingRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize, 4, 3, 1230568)
     trainingRDD.take(10).foreach(println)
+    // Defining paths
+
 
     // Turn spark dataframes into RDD
     def df_to_RDD(df: DataFrame): org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.Vector]  = {
@@ -62,11 +76,22 @@ object SparksInTheDarkMain {
         }
       }
     val backgroundRDD = df_to_RDD(filtered_background)
-
     println("Showing the first 10 RDD vectors")
     backgroundRDD.take(10).foreach(println)
 
     // Turn RDD into Minimum Density Estimate Histograms (mdeHists)
+      //  Deriving the box hull of validation & training data. This will be our root regular paving
+    var rectTrain = RectangleFunctions.boundingBox(backgroundRDD)
+    var rectValidation = RectangleFunctions.boundingBox(trainingRDD)
+    val rootBox = RectangleFunctions.hull(rectTrain, rectValidation)
+
+      // finestResSideLength is the depth where every leafs cell has no side w. length larger than 1e-5.
+    val finestResSideLength = 1e-5
+    val tree = widestSideTreeRootedAt(rootBox)
+    val finestResDepth = tree.descendBoxPrime(Vectors.dense(rootBox.low.toArray)).dropWhile(_._2.widths.max > finestResSideLength).head._1.depth
+
+    Vector(tree.rootCell.low, tree.rootCell.high).toIterable.toSeq.toDS.write.mode("overwrite").parquet(treePath)
+    Array(finestResDepth).toIterable.toSeq.toDS.write.mode("overwrite").parquet(finestResDepthPath)
 
 
     // Plot mdeHists
