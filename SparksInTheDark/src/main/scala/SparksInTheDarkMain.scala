@@ -61,11 +61,13 @@ object SparksInTheDarkMain {
     println(s"# Signal events before filter: ${original_signal_count}")
     println(s"# Signal events after filter: ${filtered_signal_count}")
     val trainSize : Long = math.pow(10, 3).toLong
-    val trainingRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize, 4, 3, 1230568)
+    val trainingRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, filtered_bkg_count, 3, 3, 1230568)
     trainingRDD.take(10).foreach(println)
     // Defining paths
-
-
+    val rootPath = "output/"
+    val treePath = rootPath + "spatialTree"
+    val finestResDepthPath = rootPath + "finestRes"
+    val mdeHistPath = rootPath + "mdeHist"
     // Turn spark dataframes into RDD
     def df_to_RDD(df: DataFrame): org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.Vector]  = {
       df.rdd.map {row =>
@@ -96,16 +98,16 @@ object SparksInTheDarkMain {
     val kInMDE = 10
     val numCores = 4 // Number of cores in cluster
 
-    val mdeHist = getMDE(
-      finestHistogram,
-      countedValidation,
-      validationSize,
-      kInMDE,
-      numCores,
-      true
-    )
-    mdeHist.counts.toIterable.toSeq.map(t => (t._1.lab.bigInteger.toByteArray, t._2)).toDS.write.mode("overwrite").parquet(mdeHistPath)
-    val density = toDensityHistogram(mdeHist).normalize
+    //val mdeHist = getMDE(
+    //  finestHistogram,
+    //  countedValidation,
+    //  validationSize,
+    //  kInMDE,
+    //  numCores,
+    //  true
+    //)
+    //mdeHist.counts.toIterable.toSeq.map(t => (t._1.lab.bigInteger.toByteArray, t._2)).toDS.write.mode("overwrite").parquet(mdeHistPath)
+    //val density = toDensityHistogram(mdeHist).normalize
     // Plot mdeHists
 
     // Get 10% highest density regions
