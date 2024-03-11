@@ -2,7 +2,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.mllib.random.RandomRDDs.normalVectorRDD
 import org.apache.spark.mllib.linalg.{Vectors, Vector => MLVector, _}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext, SparkSession}
-import scala.math.{min, max, abs, sqrt, sin, cos}
+import scala.math.{min, max, abs, sqrt, sin, cos, BigInt}
+import java.math.BigInteger
 import org.apache.spark.{SparkContext,_}
 import co.wiklund.disthist._
 import co.wiklund.disthist.Types._
@@ -69,6 +70,7 @@ object SparksInTheDarkMain {
     val rootPath = "output/"
     val treePath = rootPath + "spatialTree"
     val finestResDepthPath = rootPath + "finestRes"
+    val finestHistPath = rootPath + "finestHist"
     val mdeHistPath = rootPath + "mdeHist"
     val trainingPath = rootPath + "countedTrain"
     // Turn spark dataframes into RDD
@@ -115,12 +117,33 @@ object SparksInTheDarkMain {
     println("Max is count is " + maxLeafCount + " at depth " + finestResDepth)
     val countLimit = max(minimumCountLimit, maxLeafCount)
 
+      // Taking the leaf data at the finest resolution and merging the leaves up to the count limit.
+      // This produces the most refined histogram we're willing to use as a density estimate
+
+    val numTrainingPartitions = 205
+
+    implicit val ordering : Ordering[NodeLabel] = leftRightOrd
+    val sampleSizeHint = 1000
+    val partitioner = new SubtreePartitioner(numTrainingPartitions, countedTrain, sampleSizeHint)
+    val depthLimit = partitioner.maxSubtreeDepth
+    val subtreeRDD = countedTrain.repartitionAndSortWithinPartitions(partitioner)
+    val finestHistogram : Histogram = mergeLeavesHistogram(tree, subtreeRDD, countLimit, depthLimit)
+
+      // Saving the (NodeLabel,Count)'s to disk. Has to be used if depth of the leaves are >126.
+    finestHistogram.counts.toIterable.toSeq.map(t => (t._1.lab.bigInteger.toByteArray, t._2)).toDS.write.mode("overwrite").parquet(finestHistPath)
+
+      // Reload the histogram
+    val counts = spark.read.parquet(finestHistPath).as[(Array[Byte], Count)].map(t => (NodeLabel(new BigInt(new BigInteger(t._1))), t._2)).collect
+    val finestHistogram2 = Histogram(tree, counts.map(_._2).sum, fromNodeLabelMap(counts.toMap)) // .reduce(_+_) has been replaced with .sum
+
+      // Label the validation data
+    val countedValidation = quickToLabeledNoReduce(tree, finestResDepth, trainingRDD)
 
     val kInMDE = 10
     val numCores = 4 // Number of cores in cluster
 
     val mdeHist = getMDE(
-      finestHistogram,
+      finestHistogram2,
       countedValidation,
       validationSize,
       kInMDE,
