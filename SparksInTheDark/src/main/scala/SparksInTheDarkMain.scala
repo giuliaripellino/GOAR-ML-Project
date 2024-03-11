@@ -2,6 +2,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.mllib.random.RandomRDDs.normalVectorRDD
 import org.apache.spark.mllib.linalg.{Vectors, Vector => MLVector, _}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext, SparkSession}
+import scala.math.{min, max, abs, sqrt, sin, cos}
 import org.apache.spark.{SparkContext,_}
 import co.wiklund.disthist._
 import co.wiklund.disthist.Types._
@@ -63,11 +64,13 @@ object SparksInTheDarkMain {
     val trainSize : Long = math.pow(10, 3).toLong
     val trainingRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, filtered_bkg_count, 3, 3, 1230568)
     trainingRDD.take(10).foreach(println)
+
     // Defining paths
     val rootPath = "output/"
     val treePath = rootPath + "spatialTree"
     val finestResDepthPath = rootPath + "finestRes"
     val mdeHistPath = rootPath + "mdeHist"
+    val trainingPath = rootPath + "countedTrain"
     // Turn spark dataframes into RDD
     def df_to_RDD(df: DataFrame): org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.Vector]  = {
       df.rdd.map {row =>
@@ -95,19 +98,37 @@ object SparksInTheDarkMain {
     Vector(tree.rootCell.low, tree.rootCell.high).toIterable.toSeq.toDS.write.mode("overwrite").parquet(treePath)
     Array(finestResDepth).toIterable.toSeq.toDS.write.mode("overwrite").parquet(finestResDepthPath)
 
+      // Finding the leaf box address, label, for every leaf with a data point inside of it. HEAVY COMPUTATIONAL
+    val countedTrain = quickToLabeled(tree, finestResDepth, trainingRDD)
+    /* Only works for depth < 128 */
+    // dbutils.fs.rm(trainingPath,true) // Command only works in databricks notebook.
+    countedTrain.toDS.write.mode("overwrite").parquet(trainingPath)
+
+
+      // Setting a minimum count limit of 1e5. If a leaf if found with maximum leaf count larger than minimum; we pick that one.
+    val minimumCountLimit = 100000
+    val countedTrain2 = spark.read
+      .parquet(trainingPath)
+      .as[(NodeLabel, Count)]
+      .rdd
+    val maxLeafCount = countedTrain2.map(_._2).reduce(max(_,_))
+    println("Max is count is " + maxLeafCount + " at depth " + finestResDepth)
+    val countLimit = max(minimumCountLimit, maxLeafCount)
+
+
     val kInMDE = 10
     val numCores = 4 // Number of cores in cluster
 
-    //val mdeHist = getMDE(
-    //  finestHistogram,
-    //  countedValidation,
-    //  validationSize,
-    //  kInMDE,
-    //  numCores,
-    //  true
-    //)
-    //mdeHist.counts.toIterable.toSeq.map(t => (t._1.lab.bigInteger.toByteArray, t._2)).toDS.write.mode("overwrite").parquet(mdeHistPath)
-    //val density = toDensityHistogram(mdeHist).normalize
+    val mdeHist = getMDE(
+      finestHistogram,
+      countedValidation,
+      validationSize,
+      kInMDE,
+      numCores,
+      true
+    )
+    mdeHist.counts.toIterable.toSeq.map(t => (t._1.lab.bigInteger.toByteArray, t._2)).toDS.write.mode("overwrite").parquet(mdeHistPath)
+    val density = toDensityHistogram(mdeHist).normalize
     // Plot mdeHists
 
     // Get 10% highest density regions
