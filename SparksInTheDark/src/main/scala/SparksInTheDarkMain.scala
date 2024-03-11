@@ -93,7 +93,19 @@ object SparksInTheDarkMain {
     Vector(tree.rootCell.low, tree.rootCell.high).toIterable.toSeq.toDS.write.mode("overwrite").parquet(treePath)
     Array(finestResDepth).toIterable.toSeq.toDS.write.mode("overwrite").parquet(finestResDepthPath)
 
+    val kInMDE = 10
+    val numCores = 4 // Number of cores in cluster
 
+    val mdeHist = getMDE(
+      finestHistogram,
+      countedValidation,
+      validationSize,
+      kInMDE,
+      numCores,
+      true
+    )
+    mdeHist.counts.toIterable.toSeq.map(t => (t._1.lab.bigInteger.toByteArray, t._2)).toDS.write.mode("overwrite").parquet(mdeHistPath)
+    val density = toDensityHistogram(mdeHist).normalize
     // Plot mdeHists
 
     // Get 10% highest density regions
