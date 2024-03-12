@@ -25,18 +25,39 @@ object SparksInTheDarkMain {
       .config("spark.driver.binAdress","127.0.0.1")
       .getOrCreate()
     val sc: SparkContext = spark.sparkContext
-    val sqlContext = new SQLContext(sc)
+    val sqlContext = new SQLContext(sc) // Only way to get "toDS" working
     import sqlContext.implicits._
+
+    // ================ IF TRUE, PATHS CORRESPOND TO GCLOUD PATHS ======================
+
+    val gcloudRunning: Boolean = true  // local running (i.e. false) is mostly used for testing
+
+    // =================================================================================
+
+    // Defining paths
+    var rootPath: String = "output/"
+    rootPath = if (gcloudRunning) {
+      "gs://sitd-parquet-bucket/"
+    } else {
+      "output/"
+    }
+
+    val treePath: String = rootPath + "output/spatialTree"
+    val finestResDepthPath: String = rootPath + "output/finestRes"
+    val finestHistPath: String = rootPath + "output/finestHist"
+    val mdeHistPath: String = rootPath + "output/mdeHist"
+    val trainingPath: String = rootPath + "output/countedTrain"
+
+
     // Read in data from parquet
-    val df_background = spark.read
-      //.parquet("gs://sitd-parquet-bucket/ntuple_em_v2.parquet")
-      .parquet("data/ntuple_em_v2.parquet")
+    val background: String = rootPath + "ntuple_em_v2.parquet"
+    val signal: String = rootPath + "ntuple_SU2L_25_500_v2.parquet"
+
+    val df_background: DataFrame = spark.read.parquet(background)
     df_background.show()
 
     // WRONG SIGNAL SAMPLE
-    val df_signal = spark.read
-      //.parquet("gs://sitd-parquet-bucket/ntuple_SU2L_25_500_v2.parquet")
-      .parquet("data/ntuple_SU2L_25_500_v2.parquet")
+    val df_signal: DataFrame = spark.read.parquet(signal)
     df_signal.show()
 
     // Function which filters based on pre-defined pre-selection & selects the interesting variables
@@ -62,17 +83,10 @@ object SparksInTheDarkMain {
     println(s"# Background events after filter: ${filtered_bkg_count}")
     println(s"# Signal events before filter: ${original_signal_count}")
     println(s"# Signal events after filter: ${filtered_signal_count}")
-    val trainSize : Long = math.pow(10, 3).toLong
+    val trainSize : Long = filtered_bkg_count/2
     val trainingRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, filtered_bkg_count, 3, 3, 1230568)
     trainingRDD.take(10).foreach(println)
 
-    // Defining paths
-    val rootPath = "output/"
-    val treePath = rootPath + "spatialTree"
-    val finestResDepthPath = rootPath + "finestRes"
-    val finestHistPath = rootPath + "finestHist"
-    val mdeHistPath = rootPath + "mdeHist"
-    val trainingPath = rootPath + "countedTrain"
     // Turn spark dataframes into RDD
     def df_to_RDD(df: DataFrame): org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.Vector]  = {
       df.rdd.map {row =>
@@ -99,7 +113,6 @@ object SparksInTheDarkMain {
 
     Vector(tree.rootCell.low, tree.rootCell.high).toIterable.toSeq.toDS.write.mode("overwrite").parquet(treePath)
     Array(finestResDepth).toIterable.toSeq.toDS.write.mode("overwrite").parquet(finestResDepthPath)
-
       // Finding the leaf box address, label, for every leaf with a data point inside of it. HEAVY COMPUTATIONAL
     val countedTrain = quickToLabeled(tree, finestResDepth, trainingRDD)
     /* Only works for depth < 128 */
@@ -145,7 +158,7 @@ object SparksInTheDarkMain {
     val mdeHist = getMDE(
       finestHistogram2,
       countedValidation,
-      validationSize,
+      trainSize,
       kInMDE,
       numCores,
       true
