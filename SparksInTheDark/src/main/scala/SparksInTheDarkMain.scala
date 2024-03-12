@@ -56,7 +56,6 @@ object SparksInTheDarkMain {
     val df_background: DataFrame = spark.read.parquet(background)
     df_background.show()
 
-    // WRONG SIGNAL SAMPLE
     val df_signal: DataFrame = spark.read.parquet(signal)
     df_signal.show()
 
