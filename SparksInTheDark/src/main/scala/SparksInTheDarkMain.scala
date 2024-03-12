@@ -30,7 +30,7 @@ object SparksInTheDarkMain {
 
     // ================ IF TRUE, PATHS CORRESPOND TO GCLOUD PATHS ======================
 
-    val gcloudRunning: Boolean = true  // local running (i.e. false) is mostly used for testing
+    val gcloudRunning: Boolean = false // local running (i.e. false) is mostly used for testing
 
     // =================================================================================
 
@@ -82,9 +82,11 @@ object SparksInTheDarkMain {
     println(s"# Background events after filter: ${filtered_bkg_count}")
     println(s"# Signal events before filter: ${original_signal_count}")
     println(s"# Signal events after filter: ${filtered_signal_count}")
-    val trainSize : Long = filtered_bkg_count/2
-    val trainingRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, filtered_bkg_count, 3, 3, 1230568)
-    trainingRDD.take(10).foreach(println)
+    val trainSize : Long = 10
+    val validationRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, filtered_bkg_count/2, 3, 3, 1230568)
+
+    val backgroundRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, filtered_bkg_count, 3, 3, 1230568)
+    validationRDD.take(10).foreach(println)
 
     // Turn spark dataframes into RDD
     def df_to_RDD(df: DataFrame): org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.Vector]  = {
@@ -95,32 +97,32 @@ object SparksInTheDarkMain {
         Vectors.dense(deltaRLep2ndClosestBJet, lJet_m_plus_RCJet_m_12, bb_m_for_minDeltaR)
         }
       }
-    val backgroundRDD = df_to_RDD(filtered_background)
+    //val backgroundRDD = df_to_RDD(filtered_background)
     println("Showing the first 10 RDD vectors")
     backgroundRDD.take(10).foreach(println)
 
     // Turn RDD into Minimum Density Estimate Histograms (mdeHists)
       //  Deriving the box hull of validation & training data. This will be our root regular paving
     var rectTrain = RectangleFunctions.boundingBox(backgroundRDD)
-    var rectValidation = RectangleFunctions.boundingBox(trainingRDD)
+    var rectValidation = RectangleFunctions.boundingBox(validationRDD)
     val rootBox = RectangleFunctions.hull(rectTrain, rectValidation)
 
       // finestResSideLength is the depth where every leafs cell has no side w. length larger than 1e-5.
-    val finestResSideLength = 1e-5
+    val finestResSideLength = 1e-2 // Was 1e-5
     val tree = widestSideTreeRootedAt(rootBox)
     val finestResDepth = tree.descendBoxPrime(Vectors.dense(rootBox.low.toArray)).dropWhile(_._2.widths.max > finestResSideLength).head._1.depth
 
     Vector(tree.rootCell.low, tree.rootCell.high).toIterable.toSeq.toDS.write.mode("overwrite").parquet(treePath)
     Array(finestResDepth).toIterable.toSeq.toDS.write.mode("overwrite").parquet(finestResDepthPath)
       // Finding the leaf box address, label, for every leaf with a data point inside of it. HEAVY COMPUTATIONAL
-    val countedTrain = quickToLabeled(tree, finestResDepth, trainingRDD)
+    val countedTrain = quickToLabeled(tree, finestResDepth, validationRDD)
     /* Only works for depth < 128 */
     // dbutils.fs.rm(trainingPath,true) // Command only works in databricks notebook.
     countedTrain.toDS.write.mode("overwrite").parquet(trainingPath)
 
 
       // Setting a minimum count limit of 1e5. If a leaf if found with maximum leaf count larger than minimum; we pick that one.
-    val minimumCountLimit = 100000
+    val minimumCountLimit = 100 //was 100000
     val countedTrain2 = spark.read
       .parquet(trainingPath)
       .as[(NodeLabel, Count)]
@@ -132,30 +134,30 @@ object SparksInTheDarkMain {
       // Taking the leaf data at the finest resolution and merging the leaves up to the count limit.
       // This produces the most refined histogram we're willing to use as a density estimate
 
-    val numTrainingPartitions = 205
+    val numTrainingPartitions = 10 // was 205
 
     implicit val ordering : Ordering[NodeLabel] = leftRightOrd
-    val sampleSizeHint = 1000
+    val sampleSizeHint = 100 // was 1000
     val partitioner = new SubtreePartitioner(numTrainingPartitions, countedTrain, sampleSizeHint)
     val depthLimit = partitioner.maxSubtreeDepth
     val subtreeRDD = countedTrain.repartitionAndSortWithinPartitions(partitioner)
-    val finestHistogram : Histogram = mergeLeavesHistogram(tree, subtreeRDD, countLimit, depthLimit)
+    val finestHistogram_presave : Histogram = mergeLeavesHistogram(tree, subtreeRDD, countLimit, depthLimit)
 
       // Saving the (NodeLabel,Count)'s to disk. Has to be used if depth of the leaves are >126.
-    finestHistogram.counts.toIterable.toSeq.map(t => (t._1.lab.bigInteger.toByteArray, t._2)).toDS.write.mode("overwrite").parquet(finestHistPath)
+    finestHistogram_presave.counts.toIterable.toSeq.map(t => (t._1.lab.bigInteger.toByteArray, t._2)).toDS.write.mode("overwrite").parquet(finestHistPath)
 
       // Reload the histogram
     val counts = spark.read.parquet(finestHistPath).as[(Array[Byte], Count)].map(t => (NodeLabel(new BigInt(new BigInteger(t._1))), t._2)).collect
-    val finestHistogram2 = Histogram(tree, counts.map(_._2).sum, fromNodeLabelMap(counts.toMap)) // .reduce(_+_) has been replaced with .sum
+    val finestHistogram_postsave = Histogram(tree, counts.map(_._2).sum, fromNodeLabelMap(counts.toMap)) // .reduce(_+_) has been replaced with .sum
 
       // Label the validation data
-    val countedValidation = quickToLabeledNoReduce(tree, finestResDepth, trainingRDD)
+    val countedValidation = quickToLabeledNoReduce(tree, finestResDepth, validationRDD)
 
-    val kInMDE = 10
-    val numCores = 4 // Number of cores in cluster
+    val kInMDE = 5
+    val numCores = 8 // Number of cores in cluster
 
     val mdeHist = getMDE(
-      finestHistogram2,
+      finestHistogram_postsave,
       countedValidation,
       trainSize,
       kInMDE,
