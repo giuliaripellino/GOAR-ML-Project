@@ -7,6 +7,7 @@ import org.apache.spark.sql.{DataFrame, Row, SQLContext, SparkSession}
 import scala.math.{min, max, abs, sqrt, sin, cos, BigInt}
 import java.math.BigInteger
 import org.apache.spark.{SparkContext,_}
+import scala.sys.process._
 import co.wiklund.disthist._
 import co.wiklund.disthist.Types._
 import co.wiklund.disthist.RectangleFunctions._
@@ -172,7 +173,7 @@ object SparksInTheDarkMain {
       true
     )
     mdeHist.counts.toIterable.toSeq.map(t => (t._1.lab.bigInteger.toByteArray, t._2)).toDS.write.mode("overwrite").parquet(mdeHistPath)
-    val density = toDensityHistogram(mdeHist).normalize
+    //val density = toDensityHistogram(mdeHist).normalize
 
     // Read mdeHist into plottable objects
     val treeVec = spark.read.parquet(treePath).as[Vector[Double]].collect
@@ -193,7 +194,7 @@ object SparksInTheDarkMain {
       val mdeCounts = spark.read.parquet(mdeHistPath).as[(Array[Byte], Count)].map(t => (NodeLabel(BigInt(new BigInteger(t._1))), t._2))
       Histogram(tree_histread, mdeCounts.map(_._2).reduce(_+_), fromNodeLabelMap(mdeCounts.collect.toMap))
     }
-    val density_read = toDensityHistogram(mdeHist_read).normalize
+    val density = toDensityHistogram(mdeHist_read).normalize
 
     def savePlotValues(density : DensityHistogram, rootCell : Rectangle, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String) = {
 
@@ -250,6 +251,7 @@ object SparksInTheDarkMain {
 
       Array(values.take(n)).toIterable.toSeq.toDS.write.mode("overwrite").parquet(supportPath)
     }
+    /*
     def savePlotValuesCoverage(density : DensityHistogram, rootCell : Rectangle, coverage : Double, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String) = {
       val coverageRegions : TailProbabilities = density.tailProbabilities
 
@@ -302,28 +304,34 @@ object SparksInTheDarkMain {
 
     // Saving the important files
       // plotValues
-
+      */
     val pointsPerAxis = 256
     savePlotValues(density, density.tree.rootCell, pointsPerAxis, limitsPath, plotValuesPath)
 
-    val seed : Long = 123463
-    saveSample(density, 10000, limitsPath, samplePath, seed)
+    //val seed : Long = 123463
+    //saveSample(density, 10000, limitsPath, samplePath, seed)
+
     // Plot mdeHists
     // important for this section is to have "limitsPath","valuesPath", "samplePath" defined and populated with parquet files.
     // Also populate this section with scala.sys.process._ , capable of calling ../postprocessing/plotting.py, where the plotting scripts will live
+    val plottingScriptPath = "../Postprocessing/Plotting.py"
+    val process = Process(Seq("python3",plottingScriptPath)).run()
+    process.exitValue()
+    /*
 
-    // Get 10% highest density regions
 
-    // Plot 10% highest density regions
+   // Get 10% highest density regions
+
+   // Plot 10% highest density regions
 
 
-    // Write out csv file on the form 
-    // deltaR_min_bb	<	2.7
-    // delta_R_min_bb > 0.5
-    // .
-    // .
-    // .  
-
+   // Write out csv file on the form
+   // deltaR_min_bb	<	2.7
+   // delta_R_min_bb > 0.5
+   // .
+   // .
+   // .
+   */
     spark.stop()
     println("Stopping SparkSession...")
 
