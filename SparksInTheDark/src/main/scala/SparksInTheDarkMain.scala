@@ -66,8 +66,8 @@ object SparksInTheDarkMain {
       selectedColumns
     }
 
-    val filtered_background = filterAndSelect(df_background)
-    //filtered_background.show()
+    val filtered_background = df_background//filterAndSelect(df_background)
+    filtered_background.show()
 
     val filtered_signal = filterAndSelect(df_signal)
     filtered_signal.show()
@@ -95,16 +95,18 @@ object SparksInTheDarkMain {
 
     val Array(trainingDF, validationDF) = filtered_background.randomSplit(Array(0.8,0.2))
 
-    val trainSize : Long = 1e6.toLong
-    val backgroundRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize, 3, 1000, 1230568)
-    val validationRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize/2, 3, 1000, 12305)
+    val numTrainingPartitions = 100 // When using filtering, see line 69, the partition number which works locally for me is 23.
 
-    // COMMENTED OUT OUR DATA
+    /*
+    val trainSize : Long = filtered_bkg_count
+    val backgroundRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize, 3, numTrainingPartitions, 1230568)
+    val validationRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize/2, 3, numTrainingPartitions, 12305)
+    */
 
-    //val backgroundRDD = df_to_RDD(trainingDF)
-    //val validationRDD = df_to_RDD(validationDF)
+    val backgroundRDD = df_to_RDD(trainingDF).repartition(numTrainingPartitions)
+    val validationRDD = df_to_RDD(validationDF).repartition(numTrainingPartitions)
+    println("PARTITIONS FOR RDD",backgroundRDD.getNumPartitions,validationRDD.getNumPartitions)
 
-    // Turn RDD into Minimum Density Estimate Histograms (mdeHists)
       //  Deriving the box hull of validation & training data. This will be our root regular paving
     var rectTrain = RectangleFunctions.boundingBox(backgroundRDD)
     var rectValidation = RectangleFunctions.boundingBox(validationRDD)
@@ -136,8 +138,6 @@ object SparksInTheDarkMain {
 
       // Taking the leaf data at the finest resolution and merging the leaves up to the count limit.
       // This produces the most refined histogram we're willing to use as a density estimate
-
-    val numTrainingPartitions = 10 // was 205
 
     implicit val ordering : Ordering[NodeLabel] = leftRightOrd
     val sampleSizeHint = 100 // was 1000
