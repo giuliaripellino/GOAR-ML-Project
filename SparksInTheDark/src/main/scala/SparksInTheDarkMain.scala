@@ -35,7 +35,7 @@ object SparksInTheDarkMain {
     // =================================================================================
 
     // Defining paths
-    var rootPath: String = "output/"
+    var rootPath: String = ""
     rootPath = if (gcloudRunning) {
       "gs://sitd-parquet-bucket/"
     } else {
@@ -67,7 +67,7 @@ object SparksInTheDarkMain {
     }
 
     val filtered_background = filterAndSelect(df_background)
-    filtered_background.show()
+    //filtered_background.show()
 
     val filtered_signal = filterAndSelect(df_signal)
     filtered_signal.show()
@@ -82,11 +82,6 @@ object SparksInTheDarkMain {
     println(s"# Background events after filter: ${filtered_bkg_count}")
     println(s"# Signal events before filter: ${original_signal_count}")
     println(s"# Signal events after filter: ${filtered_signal_count}")
-    val trainSize : Long = 10
-    val validationRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, filtered_bkg_count/2, 3, 3, 1230568)
-
-    val backgroundRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, filtered_bkg_count, 3, 3, 1230568)
-    validationRDD.take(10).foreach(println)
 
     // Turn spark dataframes into RDD
     def df_to_RDD(df: DataFrame): org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.Vector]  = {
@@ -97,9 +92,17 @@ object SparksInTheDarkMain {
         Vectors.dense(deltaRLep2ndClosestBJet, lJet_m_plus_RCJet_m_12, bb_m_for_minDeltaR)
         }
       }
-    //val backgroundRDD = df_to_RDD(filtered_background)
-    println("Showing the first 10 RDD vectors")
-    backgroundRDD.take(10).foreach(println)
+
+    val Array(trainingDF, validationDF) = filtered_background.randomSplit(Array(0.8,0.2))
+
+    val trainSize : Long = 1e6.toLong
+    val backgroundRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize, 3, 1000, 1230568)
+    val validationRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize/2, 3, 1000, 12305)
+
+    // COMMENTED OUT OUR DATA
+
+    //val backgroundRDD = df_to_RDD(trainingDF)
+    //val validationRDD = df_to_RDD(validationDF)
 
     // Turn RDD into Minimum Density Estimate Histograms (mdeHists)
       //  Deriving the box hull of validation & training data. This will be our root regular paving
@@ -108,7 +111,7 @@ object SparksInTheDarkMain {
     val rootBox = RectangleFunctions.hull(rectTrain, rectValidation)
 
       // finestResSideLength is the depth where every leafs cell has no side w. length larger than 1e-5.
-    val finestResSideLength = 1e-2 // Was 1e-5
+    val finestResSideLength = 1e-3 // Was 1e-5
     val tree = widestSideTreeRootedAt(rootBox)
     val finestResDepth = tree.descendBoxPrime(Vectors.dense(rootBox.low.toArray)).dropWhile(_._2.widths.max > finestResSideLength).head._1.depth
 
@@ -153,19 +156,20 @@ object SparksInTheDarkMain {
       // Label the validation data
     val countedValidation = quickToLabeledNoReduce(tree, finestResDepth, validationRDD)
 
-    val kInMDE = 5
+    val kInMDE = 10
     val numCores = 8 // Number of cores in cluster
 
     val mdeHist = getMDE(
       finestHistogram_postsave,
       countedValidation,
-      trainSize,
+      validationRDD.count(),
       kInMDE,
       numCores,
       true
     )
     mdeHist.counts.toIterable.toSeq.map(t => (t._1.lab.bigInteger.toByteArray, t._2)).toDS.write.mode("overwrite").parquet(mdeHistPath)
     val density = toDensityHistogram(mdeHist).normalize
+
     // Plot mdeHists
 
     // Get 10% highest density regions
