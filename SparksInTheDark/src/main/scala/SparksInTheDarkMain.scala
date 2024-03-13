@@ -50,9 +50,9 @@ object SparksInTheDarkMain {
     val finestHistPath: String = rootPath + "output/finestHist"
     val mdeHistPath: String = rootPath + "output/mdeHist"
     val trainingPath: String = rootPath + "output/countedTrain"
-    val limitsPath = s"${rootPath}/limits"
-    val plotValuesPath = s"${rootPath}/plotValues"
-    val samplePath = s"${rootPath}/sample"
+    val limitsPath = rootPath + "output/limits"
+    val plotValuesPath = rootPath + "output/plotValues"
+    val samplePath = rootPath + "output/sample"
 
     // Read in data from parquet
     val background: String = rootPath + "ntuple_em_v2.parquet"
