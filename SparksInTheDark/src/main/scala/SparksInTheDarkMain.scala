@@ -174,6 +174,8 @@ object SparksInTheDarkMain {
 
 
     // Plot mdeHists
+    // important for this section is to have "limitsPath" and "valuesPath" defined and populated with parquet files.
+    // Also populate this section with scala.sys.process._ , capable of calling ../postprocessing/plotting.py, where the plotting scripts will live
 
     // Get 10% highest density regions
 
