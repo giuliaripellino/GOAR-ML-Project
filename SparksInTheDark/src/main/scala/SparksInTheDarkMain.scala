@@ -170,6 +170,9 @@ object SparksInTheDarkMain {
     mdeHist.counts.toIterable.toSeq.map(t => (t._1.lab.bigInteger.toByteArray, t._2)).toDS.write.mode("overwrite").parquet(mdeHistPath)
     val density = toDensityHistogram(mdeHist).normalize
 
+    // Read mdeHist into plottable objects
+
+
     // Plot mdeHists
 
     // Get 10% highest density regions
