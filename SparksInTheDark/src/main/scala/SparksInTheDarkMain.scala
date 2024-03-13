@@ -1,7 +1,3 @@
-import org.apache.spark.rdd.RDD
-import org.apache.spark.mllib.random.RandomRDDs.normalVectorRDD
-import org.apache.commons.rng.simple.RandomSource
-import org.apache.commons.rng.UniformRandomProvider
 import org.apache.spark.mllib.linalg.{Vectors, Vector => MLVector, _}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext, SparkSession}
 import scala.math.{min, max, abs, sqrt, sin, cos, BigInt}
@@ -10,14 +6,11 @@ import org.apache.spark.{SparkContext,_}
 import scala.sys.process._
 import co.wiklund.disthist._
 import co.wiklund.disthist.Types._
-import co.wiklund.disthist.RectangleFunctions._
 import co.wiklund.disthist.MDEFunctions._
 import co.wiklund.disthist.LeafMapFunctions._
 import co.wiklund.disthist.SpatialTreeFunctions._
 import co.wiklund.disthist.HistogramFunctions._
-import co.wiklund.disthist.TruncationFunctions._
 import co.wiklund.disthist.MergeEstimatorFunctions._
-import co.wiklund.disthist.SubtreePartitionerFunctions._
 object SparksInTheDarkMain {
   def main(args: Array[String]): Unit = {
     println("Starting SparkSession...")
@@ -70,8 +63,8 @@ object SparksInTheDarkMain {
       val selectedColumns = filtered_df.select("deltaRLep2ndClosestBJet","LJet_m_plus_RCJet_m_12","bb_m_for_minDeltaR")
       selectedColumns
     }
-
-    val filtered_background = df_background//filterAndSelect(df_background)
+    // TODO: HAS BEEN CHANGED TO MAKE BACKGROUND RUN. NEED MORE DATA
+    val filtered_background = df_background //filterAndSelect(df_background)
     filtered_background.show()
 
     val filtered_signal = filterAndSelect(df_signal)
@@ -100,9 +93,9 @@ object SparksInTheDarkMain {
 
     val Array(trainingDF, validationDF) = filtered_background.randomSplit(Array(0.8,0.2))
 
-    val numTrainingPartitions = 100 // When using filtering, see line 69, the partition number which works locally for me is 23.
+    val numTrainingPartitions = 100 // When using filtering, see line 67, the partition number which works locally for me is 23.
 
-    /*
+    /* data definition used in example notebooks
     val trainSize : Long = filtered_bkg_count
     val backgroundRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize, 3, numTrainingPartitions, 1230568)
     val validationRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize/2, 3, numTrainingPartitions, 12305)
@@ -112,6 +105,7 @@ object SparksInTheDarkMain {
     val validationRDD = df_to_RDD(validationDF).repartition(numTrainingPartitions)
     println("PARTITIONS FOR RDD",backgroundRDD.getNumPartitions,validationRDD.getNumPartitions)
 
+    // Getting the RDDs into mdeHists
       //  Deriving the box hull of validation & training data. This will be our root regular paving
     var rectTrain = RectangleFunctions.boundingBox(backgroundRDD)
     var rectValidation = RectangleFunctions.boundingBox(validationRDD)
@@ -137,7 +131,7 @@ object SparksInTheDarkMain {
       .parquet(trainingPath)
       .as[(NodeLabel, Count)]
       .rdd
-    val maxLeafCount = countedTrain2.map(_._2).reduce(max(_,_))
+    val maxLeafCount = countedTrain2.map(_._2).reduce(max)
     println("Max is count is " + maxLeafCount + " at depth " + finestResDepth)
     val countLimit = max(minimumCountLimit, maxLeafCount)
 
@@ -196,7 +190,7 @@ object SparksInTheDarkMain {
     }
     val density = toDensityHistogram(mdeHist_read).normalize
 
-    def savePlotValues(density : DensityHistogram, rootCell : Rectangle, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String) = {
+    def savePlotValues(density : DensityHistogram, rootCell : Rectangle, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String): Unit = {
 
       val limits : Array[Double] = Array(
         rootCell.low(0),
@@ -220,7 +214,7 @@ object SparksInTheDarkMain {
       }
       Array(values).toIterable.toSeq.toDS.write.mode("overwrite").parquet(plotValuesPath)
     }
-    def saveSupportPlot(density : DensityHistogram, rootCell : Rectangle, coverage : Double, limitsPath : String, supportPath : String) = {
+    def saveSupportPlot(density : DensityHistogram, rootCell : Rectangle, coverage : Double, limitsPath : String, supportPath : String): Unit = {
       val coverageRegions : TailProbabilities = density.tailProbabilities
 
       val limits : Array[Double] = Array(
