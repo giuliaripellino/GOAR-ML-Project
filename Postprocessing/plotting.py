@@ -9,8 +9,8 @@ spark = SparkSession.builder \
     .appName("Read Parquet File") \
     .getOrCreate()
 
-limitsPath = "/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/SparksInTheDark/output/limits/"
-valuesPath = "/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/SparksInTheDark/output/plotValues/"
+limitsPath = "/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/SparksInTheDark/output/output/limits/"
+valuesPath = "/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/SparksInTheDark/output/output/plotValues/"
 
 def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath):
 
@@ -18,6 +18,10 @@ def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath):
 
     limits = np.array(spark.read.parquet(limitsPath).collect())[-1,-1]
     values = np.array(spark.read.parquet(valuesPath).collect())[-1,-1]
+
+    print(limits)
+
+    print(values)
     x4_min = limits[0]
     x4_max = limits[1]
     x6_min = limits[2]
@@ -44,7 +48,7 @@ def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath):
     # Customize the z axis.
     ax.set_zlim(0.0, z_max)
     ax.set_xlim(x4_min, x4_max)
-    ax.set_ylim(x6_min, x6_max)
+    ax.set_ylim(x6_min, x6_max/10)
     ax.set_xlabel('X1')
     ax.set_ylabel('X2')
     ax.set_zlabel('f_n(X1,X2)')
@@ -52,4 +56,4 @@ def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath):
     plt.show()
 
 
-plotDensity(128,0.01, limitsPath, valuesPath)
+plotDensity(128,0.1, limitsPath, valuesPath)
