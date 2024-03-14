@@ -1,8 +1,15 @@
 import org.apache.spark.mllib.linalg.{Vectors, Vector => MLVector, _}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext, SparkSession}
-import scala.math.{min, max, abs, sqrt, sin, cos, BigInt}
+import org.apache.spark.{SparkContext, _}
+import org.apache.spark.mllib.random.RandomRDDs.normalVectorRDD
+import org.apache.spark.rdd.RDD
+import org.apache.commons.rng.UniformRandomProvider
+import org.apache.commons.rng.sampling.distribution.SharedStateDiscreteSampler
+import org.apache.commons.rng.sampling.distribution.AliasMethodDiscreteSampler
+import org.apache.commons.rng.simple.RandomSource
+
+import scala.math.{BigInt, abs, cos, max, min, sin, sqrt}
 import java.math.BigInteger
-import org.apache.spark.{SparkContext,_}
 import scala.sys.process._
 import co.wiklund.disthist._
 import co.wiklund.disthist.Types._
@@ -11,6 +18,8 @@ import co.wiklund.disthist.LeafMapFunctions._
 import co.wiklund.disthist.SpatialTreeFunctions._
 import co.wiklund.disthist.HistogramFunctions._
 import co.wiklund.disthist.MergeEstimatorFunctions._
+import org.apache.commons.math3.distribution.BetaDistribution
+
 object SparksInTheDarkMain {
   def main(args: Array[String]): Unit = {
     println("Starting SparkSession...")
@@ -126,7 +135,7 @@ object SparksInTheDarkMain {
 
 
       // Setting a minimum count limit of 1e5. If a leaf if found with maximum leaf count larger than minimum; we pick that one.
-    val minimumCountLimit = 100 //was 100000
+    val minimumCountLimit = 1000 //was 100000
     val countedTrain2 = spark.read
       .parquet(trainingPath)
       .as[(NodeLabel, Count)]
@@ -140,9 +149,9 @@ object SparksInTheDarkMain {
 
     implicit val ordering : Ordering[NodeLabel] = leftRightOrd
     val sampleSizeHint = 100 // was 1000
-    val partitioner = new SubtreePartitioner(numTrainingPartitions, countedTrain, sampleSizeHint)
+    val partitioner = new SubtreePartitioner(numTrainingPartitions, countedTrain2, sampleSizeHint)
     val depthLimit = partitioner.maxSubtreeDepth
-    val subtreeRDD = countedTrain.repartitionAndSortWithinPartitions(partitioner)
+    val subtreeRDD = countedTrain2.repartitionAndSortWithinPartitions(partitioner)
     val finestHistogram_presave : Histogram = mergeLeavesHistogram(tree, subtreeRDD, countLimit, depthLimit)
 
       // Saving the (NodeLabel,Count)'s to disk. Has to be used if depth of the leaves are >126.
