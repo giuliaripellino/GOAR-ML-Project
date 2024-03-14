@@ -1,12 +1,14 @@
 import org.apache.spark.mllib.linalg.{Vectors, Vector => MLVector, _}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext, SparkSession}
 import org.apache.spark.{SparkContext, _}
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.mllib.random.RandomRDDs.normalVectorRDD
 import org.apache.spark.rdd.RDD
-import org.apache.commons.rng.UniformRandomProvider
 import org.apache.commons.rng.sampling.distribution.SharedStateDiscreteSampler
 import org.apache.commons.rng.sampling.distribution.AliasMethodDiscreteSampler
+import org.apache.commons.math3.distribution.BetaDistribution
 import org.apache.commons.rng.simple.RandomSource
+import org.apache.commons.rng.UniformRandomProvider
 
 import scala.math.{BigInt, abs, cos, max, min, sin, sqrt}
 import java.math.BigInteger
@@ -18,7 +20,6 @@ import co.wiklund.disthist.LeafMapFunctions._
 import co.wiklund.disthist.SpatialTreeFunctions._
 import co.wiklund.disthist.HistogramFunctions._
 import co.wiklund.disthist.MergeEstimatorFunctions._
-import org.apache.commons.math3.distribution.BetaDistribution
 
 object SparksInTheDarkMain {
   def main(args: Array[String]): Unit = {
@@ -33,6 +34,9 @@ object SparksInTheDarkMain {
     val sqlContext = new SQLContext(sc) // Only way to get "toDS" working
     import sqlContext.implicits._
 
+    // Reduces INFO print statements in terminal
+    Logger.getLogger("org").setLevel(Level.OFF)
+    Logger.getLogger("akka").setLevel(Level.OFF)
     // ================ IF TRUE, PATHS CORRESPOND TO GCLOUD PATHS ======================
 
     val gcloudRunning: Boolean = false // local running (i.e. false) is mostly used for testing
@@ -47,14 +51,14 @@ object SparksInTheDarkMain {
       "output/"
     }
 
-    val treePath: String = rootPath + "output/spatialTree"
-    val finestResDepthPath: String = rootPath + "output/finestRes"
-    val finestHistPath: String = rootPath + "output/finestHist"
-    val mdeHistPath: String = rootPath + "output/mdeHist"
-    val trainingPath: String = rootPath + "output/countedTrain"
-    val limitsPath = rootPath + "output/limits"
-    val plotValuesPath = rootPath + "output/plotValues"
-    val samplePath = rootPath + "output/sample"
+    val treePath: String = rootPath + "output_3d/spatialTree"
+    val finestResDepthPath: String = rootPath + "output_3d/finestRes"
+    val finestHistPath: String = rootPath + "output_3d/finestHist"
+    val mdeHistPath: String = rootPath + "output_3d/mdeHist"
+    val trainingPath: String = rootPath + "output_3d/countedTrain"
+    val limitsPath = rootPath + "output_3d/limits"
+    val plotValuesPath = rootPath + "output_3d/plotValues"
+    val samplePath = rootPath + "output_3d/sample"
 
     // Read in data from parquet
     val background: String = rootPath + "ntuple_em_v2.parquet"
@@ -93,10 +97,11 @@ object SparksInTheDarkMain {
     // Turn spark dataframes into RDD
     def df_to_RDD(df: DataFrame): org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.Vector]  = {
       df.rdd.map {row =>
-        val deltaRLep2ndClosestBJet = row.getAs[Float]("deltaRLep2ndClosestBJet").toDouble
+        //val deltaRLep2ndClosestBJet = row.getAs[Float]("deltaRLep2ndClosestBJet").toDouble
         val lJet_m_plus_RCJet_m_12 = row.getAs[Float]("LJet_m_plus_RCJet_m_12").toDouble
         val bb_m_for_minDeltaR = row.getAs[Float]("bb_m_for_minDeltaR").toDouble
-        Vectors.dense(deltaRLep2ndClosestBJet, lJet_m_plus_RCJet_m_12, bb_m_for_minDeltaR)
+        //Vectors.dense(deltaRLep2ndClosestBJet, lJet_m_plus_RCJet_m_12, bb_m_for_minDeltaR)
+        Vectors.dense(bb_m_for_minDeltaR,lJet_m_plus_RCJet_m_12)
         }
       }
 
@@ -121,26 +126,26 @@ object SparksInTheDarkMain {
     val rootBox = RectangleFunctions.hull(rectTrain, rectValidation)
 
       // finestResSideLength is the depth where every leafs cell has no side w. length larger than 1e-5.
-    val finestResSideLength = 1e-3 // Was 1e-5
+    val finestResSideLength = 1e-5 // Was 1e-5
     val tree = widestSideTreeRootedAt(rootBox)
     val finestResDepth = tree.descendBoxPrime(Vectors.dense(rootBox.low.toArray)).dropWhile(_._2.widths.max > finestResSideLength).head._1.depth
 
     Vector(tree.rootCell.low, tree.rootCell.high).toIterable.toSeq.toDS.write.mode("overwrite").parquet(treePath)
     Array(finestResDepth).toIterable.toSeq.toDS.write.mode("overwrite").parquet(finestResDepthPath)
       // Finding the leaf box address, label, for every leaf with a data point inside of it. HEAVY COMPUTATIONAL
-    val countedTrain = quickToLabeled(tree, finestResDepth, validationRDD)
+    val countedTrain_pre = quickToLabeled(tree, finestResDepth, validationRDD)
     /* Only works for depth < 128 */
     // dbutils.fs.rm(trainingPath,true) // Command only works in databricks notebook.
-    countedTrain.toDS.write.mode("overwrite").parquet(trainingPath)
+    countedTrain_pre.toDS.write.mode("overwrite").parquet(trainingPath)
 
 
       // Setting a minimum count limit of 1e5. If a leaf if found with maximum leaf count larger than minimum; we pick that one.
-    val minimumCountLimit = 1000 //was 100000
-    val countedTrain2 = spark.read
+    val minimumCountLimit = 100 //was 100000 // try with 10000 over night
+    val countedTrain = spark.read
       .parquet(trainingPath)
       .as[(NodeLabel, Count)]
       .rdd
-    val maxLeafCount = countedTrain2.map(_._2).reduce(max)
+    val maxLeafCount = countedTrain.map(_._2).reduce(max)
     println("Max is count is " + maxLeafCount + " at depth " + finestResDepth)
     val countLimit = max(minimumCountLimit, maxLeafCount)
 
@@ -148,10 +153,10 @@ object SparksInTheDarkMain {
       // This produces the most refined histogram we're willing to use as a density estimate
 
     implicit val ordering : Ordering[NodeLabel] = leftRightOrd
-    val sampleSizeHint = 100 // was 1000
-    val partitioner = new SubtreePartitioner(numTrainingPartitions, countedTrain2, sampleSizeHint)
+    val sampleSizeHint = 1000 // was 1000
+    val partitioner = new SubtreePartitioner(numTrainingPartitions, countedTrain, sampleSizeHint)
     val depthLimit = partitioner.maxSubtreeDepth
-    val subtreeRDD = countedTrain2.repartitionAndSortWithinPartitions(partitioner)
+    val subtreeRDD = countedTrain.repartitionAndSortWithinPartitions(partitioner)
     val finestHistogram_presave : Histogram = mergeLeavesHistogram(tree, subtreeRDD, countLimit, depthLimit)
 
       // Saving the (NodeLabel,Count)'s to disk. Has to be used if depth of the leaves are >126.
@@ -159,7 +164,7 @@ object SparksInTheDarkMain {
 
       // Reload the histogram
     val counts = spark.read.parquet(finestHistPath).as[(Array[Byte], Count)].map(t => (NodeLabel(new BigInt(new BigInteger(t._1))), t._2)).collect
-    val finestHistogram_postsave = Histogram(tree, counts.map(_._2).sum, fromNodeLabelMap(counts.toMap)) // .reduce(_+_) has been replaced with .sum
+    val finestHistogram = Histogram(tree, counts.map(_._2).sum, fromNodeLabelMap(counts.toMap)) // .reduce(_+_) has been replaced with .sum
 
       // Label the validation data
     val countedValidation = quickToLabeledNoReduce(tree, finestResDepth, validationRDD)
@@ -168,7 +173,7 @@ object SparksInTheDarkMain {
     val numCores = 8 // Number of cores in cluster
 
     val mdeHist = getMDE(
-      finestHistogram_postsave,
+      finestHistogram,
       countedValidation,
       validationRDD.count(),
       kInMDE,
@@ -223,6 +228,35 @@ object SparksInTheDarkMain {
       }
       Array(values).toIterable.toSeq.toDS.write.mode("overwrite").parquet(plotValuesPath)
     }
+
+    def saveSample(density : DensityHistogram, sampleSize : Int, dimensions : Int, limitsPath : String, samplePath : String, seed : Long): Unit = {
+
+      val limits : Array[Double] = Array(
+        density.tree.rootCell.low(0),
+        density.tree.rootCell.high(0),
+        density.tree.rootCell.low(1),
+        density.tree.rootCell.high(1),
+      )
+      Array(limits).toIterable.toSeq.toDS.write.mode("overwrite").parquet(limitsPath)
+
+      val rng : UniformRandomProvider = RandomSource.XO_RO_SHI_RO_128_PP.create(seed)
+      val sample = density.sample(rng, sampleSize).map(_.toArray)
+
+      var arr : Array[Double] = new Array(dimensions * sample.length)
+      println("ARRAY LENGTH:",arr.length,"ARRAY COUNT"," DIMENSIONS:",dimensions," SAMPLE LENGTH:",sample.length)
+      for (i <- 0 until sample.length) {
+        for (j <- 0 until dimensions) {
+          arr(j + dimensions*i) = sample(i)(j)
+        }
+      }
+
+      Array(arr).toIterable.toSeq.toDS.write.mode("overwrite").parquet(samplePath)
+    }
+    val pointsPerAxis = 256
+    saveSample(density,200,2,limitsPath,samplePath,1234)
+    savePlotValues(density, density.tree.rootCell, pointsPerAxis, limitsPath, plotValuesPath)
+
+    /*
     def saveSupportPlot(density : DensityHistogram, rootCell : Rectangle, coverage : Double, limitsPath : String, supportPath : String): Unit = {
       val coverageRegions : TailProbabilities = density.tailProbabilities
 
@@ -254,7 +288,7 @@ object SparksInTheDarkMain {
 
       Array(values.take(n)).toIterable.toSeq.toDS.write.mode("overwrite").parquet(supportPath)
     }
-    /*
+
     def savePlotValuesCoverage(density : DensityHistogram, rootCell : Rectangle, coverage : Double, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String) = {
       val coverageRegions : TailProbabilities = density.tailProbabilities
 
@@ -308,8 +342,6 @@ object SparksInTheDarkMain {
     // Saving the important files
       // plotValues
       */
-    val pointsPerAxis = 256
-    savePlotValues(density, density.tree.rootCell, pointsPerAxis, limitsPath, plotValuesPath)
 
     //val seed : Long = 123463
     //saveSample(density, 10000, limitsPath, samplePath, seed)
