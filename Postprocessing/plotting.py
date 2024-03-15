@@ -10,16 +10,23 @@ from matplotlib.patches import Rectangle, PathPatch
 import mpl_toolkits.mplot3d.art3d as art3d
 from matplotlib.transforms import Bbox
 import pandas as pd
+import sys
 
-limitsPath = "/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/SparksInTheDark/output/output_3d/limits/"
-valuesPath = "/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/SparksInTheDark/output/output_3d/plotValues/"
-samplePath = "/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/SparksInTheDark/output/output_3d/sample/"
+try:
+    rootPath = sys.argv[1]
+except:
+    rootPath = "output_3d"
+    print(f"Failed to fetch rootPath from SparksInTheDark.main... using '{rootPath}' instead")
+
+limitsPath = f"../SparksInTheDark/output/{rootPath}/limits/"
+valuesPath = f"../SparksInTheDark/output/{rootPath}/plotValues/"
+samplePath = f"../SparksInTheDark/output/{rootPath}/sample/"
+
+savePath = f"../SparksInTheDark/output/{rootPath}/"
 
 def save_plots_to_pdf(file_path, plot_functions):
     with PdfPages(file_path) as pdf:
         for plot_function, arguments in plot_functions:
-            print("Plot function:", plot_function.__name__)
-            print("Arguments:", arguments)
             plt.figure()
             plot_function(*arguments)
             pdf.savefig()
@@ -89,19 +96,19 @@ def scatterPlot(dimensions, alph, limitsPath, samplePath):
 
     # Scatter plots with color values and colorbar
     sc0 = axs[0].scatter(xs[0, :], xs[1, :], c=color_values, alpha=alph)
-    axs[0].set_title('X2,X4')
+    axs[0].set_title('X1,X2')
     cbar0 = fig.colorbar(sc0, ax=axs[0])
-    cbar0.set_label('f_n(X2,X4)')
+    cbar0.set_label('f_n(X1,X2)')
 
     sc1 = axs[1].scatter(xs[0, :], xs[2, :], c=color_values, alpha=alph)
-    axs[1].set_title('X2,X5')
+    axs[1].set_title('X1,X3')
     cbar1 = fig.colorbar(sc1, ax=axs[1])
-    cbar1.set_label('f_n(X2,X5)')
+    cbar1.set_label('f_n(X1,X3)')
 
     sc2 = axs[2].scatter(xs[1, :], xs[2, :], c=color_values, alpha=alph)
-    axs[2].set_title('X4,X5')
+    axs[2].set_title('X2,X3')
     cbar2 = fig.colorbar(sc2, ax=axs[2])
-    cbar2.set_label('f_n(X4,X5)')
+    cbar2.set_label('f_n(X2,X3)')
 
     #plt.show()
 
@@ -110,6 +117,6 @@ plot_functions = [
     (plotDensity,(256,0.0002, limitsPath, valuesPath)),
 ]
 
-save_plots_to_pdf('/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/SparksInTheDark/output/combplot.pdf', plot_functions)
+save_plots_to_pdf(savePath + "figure.pdf", plot_functions)
 
 
