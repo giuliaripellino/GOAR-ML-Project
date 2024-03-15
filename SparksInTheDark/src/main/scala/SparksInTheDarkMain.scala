@@ -158,7 +158,7 @@ object SparksInTheDarkMain {
       // This produces the most refined histogram we're willing to use as a density estimate
 
     implicit val ordering : Ordering[NodeLabel] = leftRightOrd
-    val sampleSizeHint = 1000 // was 1000
+    val sampleSizeHint = 10 // was 1000
     val partitioner = new SubtreePartitioner(numTrainingPartitions, countedTrain, sampleSizeHint)
     val depthLimit = partitioner.maxSubtreeDepth
     val subtreeRDD = countedTrain.repartitionAndSortWithinPartitions(partitioner)
@@ -355,7 +355,7 @@ object SparksInTheDarkMain {
     // important for this section is to have "limitsPath","valuesPath", "samplePath" defined and populated with parquet files.
     // Also populate this section with scala.sys.process._ , capable of calling ../postprocessing/plotting.py, where the plotting scripts will live
     val plottingScriptPath = "../Postprocessing/Plotting.py"
-    val process = Process(Seq("python3",plottingScriptPath)).run()
+    val process = Process(Seq("python3",plottingScriptPath,rootPath)).run()
     process.exitValue()
     /*
 
