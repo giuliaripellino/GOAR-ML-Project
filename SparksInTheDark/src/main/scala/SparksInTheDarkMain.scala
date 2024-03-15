@@ -2,6 +2,7 @@ import org.apache.spark.mllib.linalg.{Vectors, Vector => MLVector, _}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext, SparkSession}
 import org.apache.spark.{SparkContext, _}
 import org.apache.log4j.{Level, Logger}
+import scala.util.Random
 import org.apache.spark.mllib.random.RandomRDDs.normalVectorRDD
 import org.apache.spark.rdd.RDD
 import org.apache.commons.rng.sampling.distribution.SharedStateDiscreteSampler
@@ -105,7 +106,11 @@ object SparksInTheDarkMain {
         }
       }
 
-    val Array(trainingDF, validationDF) = filtered_background.randomSplit(Array(0.8,0.2))
+    // Set Randomization seed
+    val seed = 1234
+    Random.setSeed(seed)
+
+    val Array(trainingDF, validationDF) = filtered_background.randomSplit(Array(0.8,0.2),seed)
 
     val numTrainingPartitions = 100 // When using filtering, see line 67, the partition number which works locally for me is 23.
 
