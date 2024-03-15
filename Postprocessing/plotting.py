@@ -1,6 +1,7 @@
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.backends.backend_pdf import PdfPages
 from pyspark.sql import SparkSession
 from matplotlib import cbook
 from matplotlib.colors import LightSource
@@ -13,6 +14,16 @@ import pandas as pd
 limitsPath = "/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/SparksInTheDark/output/output_3d/limits/"
 valuesPath = "/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/SparksInTheDark/output/output_3d/plotValues/"
 samplePath = "/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/SparksInTheDark/output/output_3d/sample/"
+
+def save_plots_to_pdf(file_path, plot_functions):
+    with PdfPages(file_path) as pdf:
+        for plot_function, arguments in plot_functions:
+            print("Plot function:", plot_function.__name__)
+            print("Arguments:", arguments)
+            fig, ax = plt.subplots()
+            plot_function(*arguments)
+            pdf.savefig(fig)
+            plt.close(fig)
 
 def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath):
 
@@ -53,11 +64,8 @@ def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath):
     ax.set_ylabel('X2')
     ax.set_zlabel('f_n(X1,X2)')
     ax.invert_xaxis()
-    plt.savefig("test1.pdf",format="pdf")
-    plt.show()
-
-
-#plotDensity(256,0.0002, limitsPath, valuesPath)
+    #plt.savefig("test1.pdf",format="pdf")
+    #plt.show()
 
 def scatterPlot(dimensions, alph, limitsPath, samplePath):
 
@@ -95,6 +103,13 @@ def scatterPlot(dimensions, alph, limitsPath, samplePath):
     cbar2 = fig.colorbar(sc2, ax=axs[2])
     cbar2.set_label('f_n(X4,X5)')
 
-    plt.show()
+    #plt.show()
 
-scatterPlot(3, 1, limitsPath, samplePath)
+plot_functions = [
+    (scatterPlot,(3, 1, limitsPath, samplePath)),
+    (plotDensity,(256,0.0002, limitsPath, valuesPath)),
+]
+
+save_plots_to_pdf('/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/SparksInTheDark/output/combplot.pdf', plot_functions)
+
+
