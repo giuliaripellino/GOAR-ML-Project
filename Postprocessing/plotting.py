@@ -20,10 +20,10 @@ def save_plots_to_pdf(file_path, plot_functions):
         for plot_function, arguments in plot_functions:
             print("Plot function:", plot_function.__name__)
             print("Arguments:", arguments)
-            fig, ax = plt.subplots()
+            plt.figure()
             plot_function(*arguments)
-            pdf.savefig(fig)
-            plt.close(fig)
+            pdf.savefig()
+            plt.close()
 
 def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath):
 
