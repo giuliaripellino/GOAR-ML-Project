@@ -23,6 +23,7 @@ valuesPath = f"../SparksInTheDark/output/{rootPath}/plotValues/"
 samplePath = f"../SparksInTheDark/output/{rootPath}/sample/"
 
 savePath = f"../SparksInTheDark/output/{rootPath}/"
+saveFileName = "figure.pdf"
 
 def save_plots_to_pdf(file_path, plot_functions):
     with PdfPages(file_path) as pdf:
@@ -31,6 +32,7 @@ def save_plots_to_pdf(file_path, plot_functions):
             plot_function(*arguments)
             pdf.savefig()
             plt.close()
+    print(f"Plots saved as {file_path}")
 
 def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath):
 
@@ -117,6 +119,6 @@ plot_functions = [
     (plotDensity,(256,0.0002, limitsPath, valuesPath)),
 ]
 
-save_plots_to_pdf(savePath + "figure.pdf", plot_functions)
+save_plots_to_pdf(savePath + saveFileName, plot_functions)
 
 
