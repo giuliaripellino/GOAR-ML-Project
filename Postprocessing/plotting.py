@@ -115,8 +115,8 @@ def scatterPlot(dimensions, alph, limitsPath, samplePath):
     #plt.show()
 
 plot_functions = [
-    (scatterPlot,(3, 1, limitsPath, samplePath)),
     (plotDensity,(256,0.0002, limitsPath, valuesPath)),
+    (scatterPlot,(3, 1, limitsPath, samplePath)),
 ]
 
 save_plots_to_pdf(savePath + saveFileName, plot_functions)
