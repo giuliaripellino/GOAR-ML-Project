@@ -62,5 +62,14 @@ dataframe.to_parquet("ntuple_em.parquet")
 ```
 
 ### 2. 
-One can run ```Parq-root-checks.py``` and give the .root file as input (top of the python file), which gives an .parquet file. If the input is signal (ATLAS convention where run=9999 for generated signal) **Is this correct?**, the signal is scaled. This script also checks that the created .parquet and the original .root file equal. 
+One can run ```Parq-root-checks.py``` and give the .root file as input (top of the python file), which gives an .parquet file. The script includes five functions:
 
+- `root_to_df`: Takes .root file as input and returns a pandas dataframe containing the `Events` tree.
+
+- `df_to_parq`: Takes pandas dataframe as input and saves is as a .parquet file
+
+- `parq_to_df`: Takes .parquet file as input and returns a pandas dataframe
+
+- `MinMaxScaling`: Takes pandas dataframe, list of variable names and filename as input. This returns a scaled dataframe, where the variable list defines what variables are to be scaled with MinMax, as well as an .csv file with the information necessary to un-scale the variables.
+
+- `UnScaling`: Takes scaled pandas dataframe, list of variables and path to `scaling_factors.csv` file. Un-scales the dataframe variables (chosen from the list of variables), and returns an un-scaled pandas dataframe.
