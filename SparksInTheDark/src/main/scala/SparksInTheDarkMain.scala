@@ -51,15 +51,15 @@ object SparksInTheDarkMain {
     } else {
       "output/"
     }
-
-    val treePath: String = rootPath + "output_3d/spatialTree"
-    val finestResDepthPath: String = rootPath + "output_3d/finestRes"
-    val finestHistPath: String = rootPath + "output_3d/finestHist"
-    val mdeHistPath: String = rootPath + "output_3d/mdeHist"
-    val trainingPath: String = rootPath + "output_3d/countedTrain"
-    val limitsPath = rootPath + "output_3d/limits"
-    val plotValuesPath = rootPath + "output_3d/plotValues"
-    val samplePath = rootPath + "output_3d/sample"
+    val prefix: String = "test_output/" // Supposed to define the output folder in "SparksInTheDark/output/"
+    val treePath: String = rootPath + prefix + "spatialTree"
+    val finestResDepthPath: String = rootPath + prefix + "finestRes"
+    val finestHistPath: String = rootPath + prefix + "finestHist"
+    val mdeHistPath: String = rootPath + prefix + "mdeHist"
+    val trainingPath: String = rootPath + prefix + "countedTrain"
+    val limitsPath = rootPath + prefix + "limits"
+    val plotValuesPath = rootPath + prefix + "plotValues"
+    val samplePath = rootPath + prefix + "sample"
 
     // Read in data from parquet
     val background: String = rootPath + "ntuple_em_v2.parquet"
@@ -355,7 +355,7 @@ object SparksInTheDarkMain {
     // important for this section is to have "limitsPath","valuesPath", "samplePath" defined and populated with parquet files.
     // Also populate this section with scala.sys.process._ , capable of calling ../postprocessing/plotting.py, where the plotting scripts will live
     val plottingScriptPath = "../Postprocessing/Plotting.py"
-    val process = Process(Seq("python3",plottingScriptPath,rootPath)).run()
+    val process = Process(Seq("python3",plottingScriptPath,rootPath+prefix)).run()
     process.exitValue()
     /*
 

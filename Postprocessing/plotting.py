@@ -15,15 +15,15 @@ import sys
 try:
     rootPath = sys.argv[1]
 except:
-    rootPath = "output_3d"
+    rootPath = "output"
     print(f"Failed to fetch rootPath from SparksInTheDark.main... using '{rootPath}' instead")
 
-limitsPath = f"../SparksInTheDark/output/{rootPath}/limits/"
-valuesPath = f"../SparksInTheDark/output/{rootPath}/plotValues/"
-samplePath = f"../SparksInTheDark/output/{rootPath}/sample/"
+limitsPath = f"../SparksInTheDark/{rootPath}/limits/"
+valuesPath = f"../SparksInTheDark/{rootPath}/plotValues/"
+samplePath = f"../SparksInTheDark/{rootPath}/sample/"
 
-savePath = f"../SparksInTheDark/output/{rootPath}/"
-saveFileName = "figure.pdf"
+savePath = f"../SparksInTheDark/{rootPath}"
+saveFileName = "figures.pdf"
 
 def save_plots_to_pdf(file_path, plot_functions):
     with PdfPages(file_path) as pdf:
