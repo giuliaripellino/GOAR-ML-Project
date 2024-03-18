@@ -23,8 +23,10 @@ limitsPath = f"../SparksInTheDark/{rootPath}/limits/"
 valuesPath = f"../SparksInTheDark/{rootPath}/plotValues/"
 samplePath = f"../SparksInTheDark/{rootPath}/sample/"
 
-savePath = f"../SparksInTheDark/{rootPath}"
+savePath = f"../SparksInTheDark/{rootPath}/"
 saveFileName = "figures.pdf"
+
+variable_list = {"X1":r"$\Delta R(l,b_2)$","X2":r"$m_{J^{lep}} + m_{J^{had}}$", "X3":r"$m_{bb\Delta R_{min}}$"}
 
 def save_plots_to_pdf(file_path, plot_functions):
     with PdfPages(file_path) as pdf:
@@ -35,49 +37,124 @@ def save_plots_to_pdf(file_path, plot_functions):
             plt.close()
     print(f"Plots saved as {file_path}")
 
-def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath):
-
+def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath,variable_list):
     limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
     values = np.array(pd.read_parquet(valuesPath))[-1,-1]
 
     for i in range(0, len(limits), 2):
         print(f"Variable {i//2 + 1} limits: ({limits[i]}, {limits[i+1]})")
 
-    x4_min = limits[0]
-    x4_max = limits[1]
-    x6_min = limits[2]
-    x6_max = limits[3]
+    x1_min, x1_max = limits[0], limits[1]
+    x2_min, x2_max = limits[2], limits[3]
+    x3_min, x3_max = limits[4], limits[5]
 
-    x4_width = (x4_max - x4_min) / pointsPerAxis
-    x6_width = (x6_max - x6_min) / pointsPerAxis
-
-    x = np.arange(x4_min, x4_max, x4_width)
-    y = np.arange(x6_min, x6_max, x6_width)
-    x, y = np.meshgrid(x, y, indexing='ij')
-
-    z = np.empty((pointsPerAxis,pointsPerAxis))
+    # Loop to fill z with values from values array
+    z_full = np.zeros((pointsPerAxis, pointsPerAxis, pointsPerAxis))
+    index = 0
     for i in range(pointsPerAxis):
         for j in range(pointsPerAxis):
-            z[i,j] = values[i*pointsPerAxis + j]
+            for k in range(pointsPerAxis):
+                z_full[i, j, k] = values[index]
+                index += 1
 
-    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    combination_list = {"X1_X2":[x1_min, x1_max, x2_min, x2_max],
+                        "X1_X3":[x1_min, x1_max, x3_min, x3_max],
+                        "X2_X3":[x2_min, x2_max, x3_min, x3_max]}
 
-    # Plot the surface.
-    surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=1, antialiased=False)
-    # surf = ax.plot_surface(x, y, z, cmap=cm.gist_earth, linewidth=0, antialiased=False)
-    
-    # Customize the z axis.
-    #ax.set_zlim(0.0, z_max)
-    #ax.set_xlim(x4_min, x4_max)
-    #ax.set_ylim(x6_min, x6_max)
-    ax.set_xlabel('X1')
-    ax.set_ylabel('X2')
-    ax.set_zlabel('f_n(X1,X2)')
-    ax.invert_xaxis()
-    #plt.savefig("test1.pdf",format="pdf")
-    #plt.show()
+    fig, axes = plt.subplots(1, 3, subplot_kw={"projection": "3d"}, figsize=(15, 5))
 
-def scatterPlot(dimensions, alph, limitsPath, samplePath):
+    for i, (combination, minmaxlist) in enumerate(combination_list.items()):
+        xlabel, ylabel = combination.split("_")[0], combination.split("_")[1]
+
+        ax = axes[i]
+
+        x_width = (minmaxlist[1] - minmaxlist[0]) / pointsPerAxis
+        y_width = (minmaxlist[3] - minmaxlist[2]) / pointsPerAxis
+
+        x = np.arange(minmaxlist[0], minmaxlist[1], x_width)
+        y = np.arange(minmaxlist[2], minmaxlist[3], y_width)
+
+        x, y = np.meshgrid(x, y, indexing='ij')
+        if combination == "X1_X2":
+            z = z_full[:,:,0]
+        elif combination == "X1_X3":
+            z = z_full[:,0,:]
+        elif combination == "X2_X3":
+            z = z_full[0,:,:]
+
+        # Plot the surface.
+        surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=1, antialiased=False)
+        xlabel = variable_list[xlabel]
+        ylabel = variable_list[ylabel]
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_zlabel(r'$f_n$')
+        ax.invert_xaxis()
+
+    #plt.tight_layout()  # Adjust subplot layout to prevent overlap
+    #plt.show()  # Show the plot
+
+def plotDensity2D(pointsPerAxis, z_max, limitsPath, valuesPath,variable_list):
+    limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
+    values = np.array(pd.read_parquet(valuesPath))[-1,-1]
+
+    for i in range(0, len(limits), 2):
+        print(f"Variable {i//2 + 1} limits: ({limits[i]}, {limits[i+1]})")
+
+    x1_min, x1_max = limits[0], limits[1]
+    x2_min, x2_max = limits[2], limits[3]
+    x3_min, x3_max = limits[4], limits[5]
+
+    # Loop to fill z with values from values array
+    z_full = np.zeros((pointsPerAxis, pointsPerAxis, pointsPerAxis))
+    index = 0
+    for i in range(pointsPerAxis):
+        for j in range(pointsPerAxis):
+            for k in range(pointsPerAxis):
+                z_full[i, j, k] = values[index]
+                index += 1
+
+    combination_list = {"X1_X2": [x1_min, x1_max, x2_min, x2_max],
+                        "X1_X3": [x1_min, x1_max, x3_min, x3_max],
+                        "X2_X3": [x2_min, x2_max, x3_min, x3_max]}
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+    for i, (combination, minmaxlist) in enumerate(combination_list.items()):
+        xlabel, ylabel = combination.split("_")[0], combination.split("_")[1]
+
+        ax = axes[i]
+
+        x_width = (minmaxlist[1] - minmaxlist[0]) / pointsPerAxis
+        y_width = (minmaxlist[3] - minmaxlist[2]) / pointsPerAxis
+
+        x = np.arange(minmaxlist[0], minmaxlist[1], x_width)
+        y = np.arange(minmaxlist[2], minmaxlist[3], y_width)
+
+        x, y = np.meshgrid(x, y, indexing='ij')
+        if combination == "X1_X2":
+            z = z_full[:,:,0]
+            ax.set_ylim(-10,600)
+        elif combination == "X1_X3":
+            z = z_full[:,0,:]
+            ax.set_ylim(0,500)
+        elif combination == "X2_X3":
+            z = z_full[0,:,:]
+            ax.set_xlim(0,500)
+            ax.set_ylim(0,400)
+
+        xlabel = variable_list[xlabel]
+        ylabel = variable_list[ylabel]
+        # Plot the surface.
+        im = ax.contourf(x, y, z, cmap='coolwarm')
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_title(f'{xlabel} vs {ylabel}')
+        fig.colorbar(im, ax=ax)
+
+    #plt.tight_layout()  # Adjust subplot layout to prevent overlap
+
+def scatterPlot(dimensions, alph, limitsPath, samplePath,variable_list):
 
     limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
     values = np.array(pd.read_parquet(samplePath))[-1,-1]
@@ -116,8 +193,9 @@ def scatterPlot(dimensions, alph, limitsPath, samplePath):
     #plt.show()
 
 plot_functions = [
-    (plotDensity,(256,0.0002, limitsPath, valuesPath)),
-    (scatterPlot,(3, 1, limitsPath, samplePath)),
+    (plotDensity,(256,0.0002, limitsPath, valuesPath,variable_list)),
+    (plotDensity2D,(256,0.0002, limitsPath, valuesPath,variable_list)),
+    #(scatterPlot,(3, 1, limitsPath, samplePath,variable_list)),
 ]
 
 save_plots_to_pdf(savePath + saveFileName, plot_functions)
