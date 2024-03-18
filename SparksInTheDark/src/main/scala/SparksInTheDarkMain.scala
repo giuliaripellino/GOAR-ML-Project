@@ -51,7 +51,7 @@ object SparksInTheDarkMain {
     } else {
       "output/"
     }
-    val prefix: String = "test_output/" // Supposed to define the output folder in "SparksInTheDark/output/"
+    val prefix: String = "test_output_3d_debugging/" // Supposed to define the output folder in "SparksInTheDark/output/"
     val treePath: String = rootPath + prefix + "spatialTree"
     val finestResDepthPath: String = rootPath + prefix + "finestRes"
     val finestHistPath: String = rootPath + prefix + "finestHist"
@@ -98,11 +98,11 @@ object SparksInTheDarkMain {
     // Turn spark dataframes into RDD
     def df_to_RDD(df: DataFrame): org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.Vector]  = {
       df.rdd.map {row =>
-        //val deltaRLep2ndClosestBJet = row.getAs[Float]("deltaRLep2ndClosestBJet").toDouble
+        val deltaRLep2ndClosestBJet = row.getAs[Float]("deltaRLep2ndClosestBJet").toDouble
         val lJet_m_plus_RCJet_m_12 = row.getAs[Float]("LJet_m_plus_RCJet_m_12").toDouble
         val bb_m_for_minDeltaR = row.getAs[Float]("bb_m_for_minDeltaR").toDouble
-        //Vectors.dense(deltaRLep2ndClosestBJet, lJet_m_plus_RCJet_m_12, bb_m_for_minDeltaR)
-        Vectors.dense(bb_m_for_minDeltaR,lJet_m_plus_RCJet_m_12)
+        Vectors.dense(deltaRLep2ndClosestBJet, lJet_m_plus_RCJet_m_12, bb_m_for_minDeltaR)
+        //Vectors.dense(bb_m_for_minDeltaR,lJet_m_plus_RCJet_m_12)
         }
       }
 
@@ -116,17 +116,18 @@ object SparksInTheDarkMain {
 
     /* data definition used in example notebooks
     val trainSize : Long = filtered_bkg_count
-    val backgroundRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize, 3, numTrainingPartitions, 1230568)
+    val trainingRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize, 3, numTrainingPartitions, 1230568)
     val validationRDD : RDD[MLVector] = normalVectorRDD(spark.sparkContext, trainSize/2, 3, numTrainingPartitions, 12305)
     */
 
-    val backgroundRDD = df_to_RDD(trainingDF).repartition(numTrainingPartitions)
+    val trainingRDD = df_to_RDD(trainingDF).repartition(numTrainingPartitions)
     val validationRDD = df_to_RDD(validationDF).repartition(numTrainingPartitions)
-    println("PARTITIONS FOR RDD",backgroundRDD.getNumPartitions,validationRDD.getNumPartitions)
+
+    val dimensions = trainingRDD.first().size
 
     // Getting the RDDs into mdeHists
       //  Deriving the box hull of validation & training data. This will be our root regular paving
-    var rectTrain = RectangleFunctions.boundingBox(backgroundRDD)
+    var rectTrain = RectangleFunctions.boundingBox(trainingRDD)
     var rectValidation = RectangleFunctions.boundingBox(validationRDD)
     val rootBox = RectangleFunctions.hull(rectTrain, rectValidation)
 
@@ -138,7 +139,7 @@ object SparksInTheDarkMain {
     Vector(tree.rootCell.low, tree.rootCell.high).toIterable.toSeq.toDS.write.mode("overwrite").parquet(treePath)
     Array(finestResDepth).toIterable.toSeq.toDS.write.mode("overwrite").parquet(finestResDepthPath)
       // Finding the leaf box address, label, for every leaf with a data point inside of it. HEAVY COMPUTATIONAL
-    val countedTrain_pre = quickToLabeled(tree, finestResDepth, backgroundRDD)
+    val countedTrain_pre = quickToLabeled(tree, finestResDepth, trainingRDD)
     /* Only works for depth < 128 */
     // dbutils.fs.rm(trainingPath,true) // Command only works in databricks notebook.
     countedTrain_pre.toDS.write.mode("overwrite").parquet(trainingPath)
@@ -190,9 +191,9 @@ object SparksInTheDarkMain {
 
     // Read mdeHist into plottable objects
     val treeVec = spark.read.parquet(treePath).as[Vector[Double]].collect
-    val lowArr : Array[Double] = new Array(2)
-    val highArr : Array[Double] = new Array(2)
-    for (j <- 0 to 1) {
+    val lowArr : Array[Double] = new Array(dimensions)
+    val highArr : Array[Double] = new Array(dimensions)
+    for (j <- 0 until dimensions) {
       if(treeVec(0)(j) < treeVec(1)(j)) {
         lowArr(j) = treeVec(0)(j)
         highArr(j) = treeVec(1)(j)
@@ -208,7 +209,6 @@ object SparksInTheDarkMain {
       Histogram(tree_histread, mdeCounts.map(_._2).reduce(_+_), fromNodeLabelMap(mdeCounts.collect.toMap))
     }
     val density = toDensityHistogram(mdeHist_read).normalize
-
     def savePlotValues(density : DensityHistogram, rootCell : Rectangle, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String): Unit = {
 
       val limits : Array[Double] = Array(
@@ -216,19 +216,25 @@ object SparksInTheDarkMain {
         rootCell.high(0),
         rootCell.low(1),
         rootCell.high(1),
+        rootCell.low(2),
+        rootCell.high(2)
       )
       Array(limits).toIterable.toSeq.toDS.write.mode("overwrite").parquet(limitsPath)
 
       val x4Width = rootCell.high(0) - rootCell.low(0)
       val x6Width = rootCell.high(1) - rootCell.low(1)
+      val x8Width = rootCell.high(2) - rootCell.low(2)
 
-      val values : Array[Double] = new Array(pointsPerAxis * pointsPerAxis)
+      val values: Array[Double] = new Array(pointsPerAxis * pointsPerAxis * pointsPerAxis)
 
       for (i <- 0 until pointsPerAxis) {
         val x4_p = rootCell.low(0) + (i + 0.5) * (x4Width / pointsPerAxis)
         for (j <- 0 until pointsPerAxis) {
           val x6_p = rootCell.low(1) + (j + 0.5) * (x6Width / pointsPerAxis)
-          values(i * pointsPerAxis + j) = density.density(Vectors.dense(x4_p, x6_p))
+          for (k <- 0 until pointsPerAxis) {
+            val x8_p = rootCell.low(2) + (k + 0.5) * (x8Width / pointsPerAxis)
+            values(i * pointsPerAxis * pointsPerAxis + j * pointsPerAxis + k) = density.density(Vectors.dense(x4_p, x6_p, x8_p))
+          }
         }
       }
       Array(values).toIterable.toSeq.toDS.write.mode("overwrite").parquet(plotValuesPath)
@@ -242,7 +248,7 @@ object SparksInTheDarkMain {
         density.tree.rootCell.low(1),
         density.tree.rootCell.high(1),
       )
-      Array(limits).toIterable.toSeq.toDS.write.mode("overwrite").parquet(limitsPath)
+      //Array(limits).toIterable.toSeq.toDS.write.mode("overwrite").parquet(limitsPath)
 
       val rng : UniformRandomProvider = RandomSource.XO_RO_SHI_RO_128_PP.create(seed)
       val sample = density.sample(rng, sampleSize).map(_.toArray)
@@ -256,9 +262,10 @@ object SparksInTheDarkMain {
       }
 
       Array(arr).toIterable.toSeq.toDS.write.mode("overwrite").parquet(samplePath)
+      println("sampleValues saved!")
     }
     val pointsPerAxis = 256
-    saveSample(density,200,2,limitsPath,samplePath,1234)
+    saveSample(density,200,dimensions,limitsPath,samplePath,seed)
     savePlotValues(density, density.tree.rootCell, pointsPerAxis, limitsPath, plotValuesPath)
 
     /*
