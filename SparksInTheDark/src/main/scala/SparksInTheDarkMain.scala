@@ -110,7 +110,7 @@ object SparksInTheDarkMain {
     val seed = 1234
     Random.setSeed(seed)
 
-    val Array(trainingDF, validationDF) = filtered_background.randomSplit(Array(0.8,0.2),seed)
+    val Array(trainingDF, validationDF) = filtered_background.randomSplit(Array(0.75,0.25),seed)
 
     val numTrainingPartitions = 100 // When using filtering, see line 67, the partition number which works locally for me is 23.
 
@@ -138,7 +138,7 @@ object SparksInTheDarkMain {
     Vector(tree.rootCell.low, tree.rootCell.high).toIterable.toSeq.toDS.write.mode("overwrite").parquet(treePath)
     Array(finestResDepth).toIterable.toSeq.toDS.write.mode("overwrite").parquet(finestResDepthPath)
       // Finding the leaf box address, label, for every leaf with a data point inside of it. HEAVY COMPUTATIONAL
-    val countedTrain_pre = quickToLabeled(tree, finestResDepth, validationRDD)
+    val countedTrain_pre = quickToLabeled(tree, finestResDepth, backgroundRDD)
     /* Only works for depth < 128 */
     // dbutils.fs.rm(trainingPath,true) // Command only works in databricks notebook.
     countedTrain_pre.toDS.write.mode("overwrite").parquet(trainingPath)
