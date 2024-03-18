@@ -16,14 +16,14 @@ try:
     rootPath = sys.argv[1]
     print(f"Using rootPath: {rootPath}")
 except:
-    rootPath = "output"
+    rootPath = "output/HPS_count100_1e-6"
     print(f"Failed to fetch rootPath from SparksInTheDark.main... using '{rootPath}' instead")
 
 limitsPath = f"../SparksInTheDark/{rootPath}/limits/"
 valuesPath = f"../SparksInTheDark/{rootPath}/plotValues/"
 samplePath = f"../SparksInTheDark/{rootPath}/sample/"
 
-savePath = f"../SparksInTheDark/{rootPath}/"
+savePath = f"../SparksInTheDark/{rootPath}"
 saveFileName = "figures.pdf"
 
 variable_list = {"X1":r"$\Delta R(l,b_2)$","X2":r"$m_{J^{lep}} + m_{J^{had}}$", "X3":r"$m_{bb\Delta R_{min}}$"}
@@ -48,21 +48,17 @@ def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath,variable_list):
     x2_min, x2_max = limits[2], limits[3]
     x3_min, x3_max = limits[4], limits[5]
 
-    # Loop to fill z with values from values array
-    z_full = np.zeros((pointsPerAxis, pointsPerAxis, pointsPerAxis))
-    index = 0
-    for i in range(pointsPerAxis):
-        for j in range(pointsPerAxis):
-            for k in range(pointsPerAxis):
-                z_full[i, j, k] = values[index]
-                index += 1
+    values_3d = values.reshape((pointsPerAxis, pointsPerAxis, pointsPerAxis))
+    z_x1_x2 = values_3d[:, :, 0]
+    z_x1_x3 = values_3d[:, 0, :]
+    z_x2_x3 = values_3d[0, :, :]
 
     combination_list = {"X1_X2":[x1_min, x1_max, x2_min, x2_max],
                         "X1_X3":[x1_min, x1_max, x3_min, x3_max],
                         "X2_X3":[x2_min, x2_max, x3_min, x3_max]}
 
     fig, axes = plt.subplots(1, 3, subplot_kw={"projection": "3d"}, figsize=(15, 5))
-
+    z_list = [z_x1_x2,z_x1_x3,z_x2_x3]
     for i, (combination, minmaxlist) in enumerate(combination_list.items()):
         xlabel, ylabel = combination.split("_")[0], combination.split("_")[1]
 
@@ -75,15 +71,9 @@ def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath,variable_list):
         y = np.arange(minmaxlist[2], minmaxlist[3], y_width)
 
         x, y = np.meshgrid(x, y, indexing='ij')
-        if combination == "X1_X2":
-            z = z_full[:,:,0]
-        elif combination == "X1_X3":
-            z = z_full[:,0,:]
-        elif combination == "X2_X3":
-            z = z_full[0,:,:]
 
         # Plot the surface.
-        surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=1, antialiased=False)
+        surf = ax.plot_surface(x, y, z_list[i], cmap=cm.coolwarm, linewidth=1, antialiased=False)
         xlabel = variable_list[xlabel]
         ylabel = variable_list[ylabel]
         ax.set_xlabel(xlabel)
@@ -91,8 +81,6 @@ def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath,variable_list):
         ax.set_zlabel(r'$f_n$')
         ax.invert_xaxis()
 
-    #plt.tight_layout()  # Adjust subplot layout to prevent overlap
-    #plt.show()  # Show the plot
 
 def plotDensity2D(pointsPerAxis, z_max, limitsPath, valuesPath,variable_list):
     limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
@@ -145,14 +133,12 @@ def plotDensity2D(pointsPerAxis, z_max, limitsPath, valuesPath,variable_list):
 
         xlabel = variable_list[xlabel]
         ylabel = variable_list[ylabel]
-        # Plot the surface.
+
         im = ax.contourf(x, y, z, cmap='coolwarm')
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.set_title(f'{xlabel} vs {ylabel}')
         fig.colorbar(im, ax=ax)
-
-    #plt.tight_layout()  # Adjust subplot layout to prevent overlap
 
 def scatterPlot(dimensions, alph, limitsPath, samplePath,variable_list):
 

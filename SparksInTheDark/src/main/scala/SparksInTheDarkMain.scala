@@ -51,7 +51,7 @@ object SparksInTheDarkMain {
     } else {
       "output/"
     }
-    val prefix: String = "3D_plotting/" // Supposed to define the output folder in "SparksInTheDark/output/"
+    val prefix: String = "HPS_count10000_sampleSize10000/" // Supposed to define the output folder in "SparksInTheDark/output/"
     val treePath: String = rootPath + prefix + "spatialTree"
     val finestResDepthPath: String = rootPath + prefix + "finestRes"
     val finestHistPath: String = rootPath + prefix + "finestHist"
@@ -105,7 +105,6 @@ object SparksInTheDarkMain {
         //Vectors.dense(bb_m_for_minDeltaR,lJet_m_plus_RCJet_m_12)
         }
       }
-
     // Set Randomization seed
     val seed = 1234
     Random.setSeed(seed)
@@ -146,7 +145,7 @@ object SparksInTheDarkMain {
 
 
       // Setting a minimum count limit of 1e5. If a leaf if found with maximum leaf count larger than minimum; we pick that one.
-    val minimumCountLimit = 100 //was 100000 // try with 10000 over night
+    val minimumCountLimit = 10000 //was 100000 // try with 10000 over night
     val countedTrain = spark.read
       .parquet(trainingPath)
       .as[(NodeLabel, Count)]
@@ -159,7 +158,7 @@ object SparksInTheDarkMain {
       // This produces the most refined histogram we're willing to use as a density estimate
 
     implicit val ordering : Ordering[NodeLabel] = leftRightOrd
-    val sampleSizeHint = 10 // was 1000
+    val sampleSizeHint = 10000 // was 1000
     val partitioner = new SubtreePartitioner(numTrainingPartitions, countedTrain, sampleSizeHint)
     val depthLimit = partitioner.maxSubtreeDepth
     val subtreeRDD = countedTrain.repartitionAndSortWithinPartitions(partitioner)
@@ -176,7 +175,7 @@ object SparksInTheDarkMain {
     val countedValidation = quickToLabeledNoReduce(tree, finestResDepth, validationRDD)
 
     val kInMDE = 10
-    val numCores = 8 // Number of cores in cluster
+    val numCores = 16 // Number of cores in cluster
 
     val mdeHist = getMDE(
       finestHistogram,
