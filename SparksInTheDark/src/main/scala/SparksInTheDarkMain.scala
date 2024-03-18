@@ -51,7 +51,7 @@ object SparksInTheDarkMain {
     } else {
       "output/"
     }
-    val prefix: String = "test_output_3d_debugging/" // Supposed to define the output folder in "SparksInTheDark/output/"
+    val prefix: String = "3D_plotting/" // Supposed to define the output folder in "SparksInTheDark/output/"
     val treePath: String = rootPath + prefix + "spatialTree"
     val finestResDepthPath: String = rootPath + prefix + "finestRes"
     val finestHistPath: String = rootPath + prefix + "finestHist"
@@ -226,7 +226,7 @@ object SparksInTheDarkMain {
       val x8Width = rootCell.high(2) - rootCell.low(2)
 
       val values: Array[Double] = new Array(pointsPerAxis * pointsPerAxis * pointsPerAxis)
-
+      println("Filling array with a lot of values. Time-complexity here is O(n^3)... ")
       for (i <- 0 until pointsPerAxis) {
         val x4_p = rootCell.low(0) + (i + 0.5) * (x4Width / pointsPerAxis)
         for (j <- 0 until pointsPerAxis) {
@@ -267,96 +267,6 @@ object SparksInTheDarkMain {
     val pointsPerAxis = 256
     saveSample(density,200,dimensions,limitsPath,samplePath,seed)
     savePlotValues(density, density.tree.rootCell, pointsPerAxis, limitsPath, plotValuesPath)
-
-    /*
-    def saveSupportPlot(density : DensityHistogram, rootCell : Rectangle, coverage : Double, limitsPath : String, supportPath : String): Unit = {
-      val coverageRegions : TailProbabilities = density.tailProbabilities
-
-      val limits : Array[Double] = Array(
-        rootCell.low(0),
-        rootCell.high(0),
-        rootCell.low(1),
-        rootCell.high(1),
-      )
-      Array(limits).toIterable.toSeq.toDS.write.mode("overwrite").parquet(limitsPath)
-
-      val x4Width = rootCell.high(0) - rootCell.low(0)
-      val x6Width = rootCell.high(1) - rootCell.low(1)
-
-      var n = 0
-      /* bottom_left, width1, width2 */
-      var values : Array[Double] = new Array(4 * density.densityMap.vals.length)
-      for (i <- density.densityMap.vals.indices) {
-        val rect = tree.cellAt(density.densityMap.truncation.leaves(i))
-        val centre = Vectors.dense(rect.centre(0), rect.centre(1))
-        if (coverageRegions.query(centre) <= coverage) {
-          values(n + 0) = rect.low(0)
-          values(n + 1) = rect.low(1)
-          values(n + 2) = rect.high(0) - rect.low(0)
-          values(n + 3) = rect.high(1) - rect.low(1)
-          n += 4
-        }
-      }
-
-      Array(values.take(n)).toIterable.toSeq.toDS.write.mode("overwrite").parquet(supportPath)
-    }
-
-    def savePlotValuesCoverage(density : DensityHistogram, rootCell : Rectangle, coverage : Double, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String) = {
-      val coverageRegions : TailProbabilities = density.tailProbabilities
-
-      val limits : Array[Double] = Array(
-        rootCell.low(0),
-        rootCell.high(0),
-        rootCell.low(1),
-        rootCell.high(1),
-      )
-      Array(limits).toIterable.toSeq.toDS.write.mode("overwrite").parquet(limitsPath)
-
-      val x4Width = rootCell.high(0) - rootCell.low(0)
-      val x6Width = rootCell.high(1) - rootCell.low(1)
-
-      val values : Array[Double] = new Array(pointsPerAxis * pointsPerAxis)
-
-      for (i <- 0 until pointsPerAxis) {
-        val x4_p = rootCell.low(0) + (i + 0.5) * (x4Width / pointsPerAxis)
-        for (j <- 0 until pointsPerAxis) {
-          val x6_p = rootCell.low(1) + (j + 0.5) * (x6Width / pointsPerAxis)
-          if (coverageRegions.query(Vectors.dense(x4_p, x6_p)) <= coverage)
-            values(i * pointsPerAxis + j) = density.density(Vectors.dense(x4_p, x6_p))
-          else
-            values(i * pointsPerAxis + j) = 0.0
-        }
-      }
-      Array(values).toIterable.toSeq.toDS.write.mode("overwrite").parquet(plotValuesPath)
-    }
-    def saveSample(density : DensityHistogram, sampleSize : Int, limitsPath : String, samplePath : String, seed : Long) = {
-
-      val limits : Array[Double] = Array(
-        density.tree.rootCell.low(0),
-        density.tree.rootCell.high(0),
-        density.tree.rootCell.low(1),
-        density.tree.rootCell.high(1),
-      )
-      Array(limits).toIterable.toSeq.toDS.write.mode("overwrite").parquet(limitsPath)
-
-      val rng : UniformRandomProvider = RandomSource.XO_RO_SHI_RO_128_PP.create(seed)
-      val sample = density.sample(rng, sampleSize).map(_.toArray)
-
-      var arr : Array[Double] = new Array(2 * sample.length)
-      for (i <- sample.indices) {
-        arr(2*i + 0) = sample(i)(0)
-        arr(2*i + 1) = sample(i)(1)
-      }
-
-      Array(arr).toIterable.toSeq.toDS.write.mode("overwrite").parquet(samplePath)
-    }
-
-    // Saving the important files
-      // plotValues
-      */
-
-    //val seed : Long = 123463
-    //saveSample(density, 10000, limitsPath, samplePath, seed)
 
     // Plot mdeHists
     // important for this section is to have "limitsPath","valuesPath", "samplePath" defined and populated with parquet files.
