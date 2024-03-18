@@ -4,8 +4,13 @@ from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 import csv
 
-input_file_name = 'ntuple_SU2L_25_500_v2' ## WITHOUT .root / .parquet
-save_file_name = 'ntuple_SU2L_25_500_weighted_v2' ## WITHOUT .root / .parquet
+"""
+DEFINE THESE PATHS YOURSELVES!
+"""
+
+input_file_name = '/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/ntuple_SU2L_25_500_v2' ## WITHOUT .root / .parquet
+save_file_name = '/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/ntuple_SU2L_25_500_v2_scaled' ## WITHOUT .root / .parquet
+scaling_factors_name = '/Users/axega337/Documents/PhD/SparksInTheDark/GOAR-ML-Project/scaling_factors_signal' ## WITHOUT .csv
 
 """
 Some necessary functions are first defined
@@ -63,8 +68,7 @@ variables = ["HT","LJet_m_plus_RCJet_m_12","bb_m_for_minDeltaR","deltaRLep2ndClo
 df = root_to_df(f"{input_file_name}.root")
 
 ## MinMaxScaling the wanted variables and saving the scaling factors
-df[variables] = MinMaxScaling(df,variables,'scaling_factors.csv')
-
+df[variables] = MinMaxScaling(df,variables,scaling_factors_name+'.csv')
 
 ## Saving the dataframe as parquet
 df.to_parquet(f"{save_file_name}.parquet")
@@ -81,6 +85,9 @@ for col in diff.columns:
         print(f"'{col}' has non-zero differences. Something is wrong!")
 
 ### To unscale, do something like this: unscaled_Dataframe = UnScaling()
+
+#df_unscaled = UnScaling(df_scaled,scaling_factors_name+".csv",variables)
+#df_unscaled.to_parquet(f"<WHERE_TO_SAVE>.parquet")
 
 """
 # Old function not necessary
