@@ -14,6 +14,7 @@ import sys
 
 try:
     rootPath = sys.argv[1]
+    print(f"Using rootPath: {rootPath}")
 except:
     rootPath = "output"
     print(f"Failed to fetch rootPath from SparksInTheDark.main... using '{rootPath}' instead")
@@ -79,7 +80,7 @@ def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath):
 def scatterPlot(dimensions, alph, limitsPath, samplePath):
 
     limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
-    values = np.array(pd.read_parquet(valuesPath))[-1,-1]
+    values = np.array(pd.read_parquet(samplePath))[-1,-1]
 
     for i in range(0, len(limits), 2):
         print(f"Variable {i//2 + 1} limits: ({limits[i]}, {limits[i+1]})")
