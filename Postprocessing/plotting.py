@@ -10,14 +10,14 @@ from itertools import combinations
 
 try:
     rootPath = sys.argv[1]
-    pointsPerAxis = sys.argv[2]
-    dimensions = sys.argv[3]
+    pointsPerAxis = int(sys.argv[2])
+    dimensions = int(sys.argv[3])
     print(f"Using rootPath: '{rootPath}', ppAxis={pointsPerAxis} & dim={dimensions} from 'SparksInTheDarkMain.scala'")
 except:
-    rootPath = "output/4D_plotting"
+    rootPath = "output/4D_plotting_tailProb100"
     pointsPerAxis = 64
     dimensions = 4
-    print(f"Failed to fetch rootPath from SparksInTheDarkMain.scala... using '{rootPath}/' instead")
+    print(f"Failed to fetch rootPath from SparksInTheDarkMain.scala... using '{rootPath}' instead")
     print(f"Failed to fetch pointsPerAxis from SparksInTheDarkMain.scala... using pointsPerAxis={pointsPerAxis}")
     print(f"Failed to fetch dimensions from SparksInTheDarkMain.scala... using dim={dimensions} instead")
 
