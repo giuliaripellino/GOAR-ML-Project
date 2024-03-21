@@ -209,8 +209,9 @@ object SparksInTheDarkMain {
     }
     val density = toDensityHistogram(mdeHist_read).normalize
 
-    def savePlotValues(density : DensityHistogram, rootCell : Rectangle, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String): Unit = {
+    def savePlotValues(density : DensityHistogram, rootCell : Rectangle, coverage : Double, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String): Unit = {
 
+      val coverageRegions : TailProbabilities = density.tailProbabilities
       val limits : Array[Double] = Array(
         rootCell.low(0),
         rootCell.high(0),
@@ -228,14 +229,17 @@ object SparksInTheDarkMain {
         val x4_p = rootCell.low(0) + (i + 0.5) * (x4Width / pointsPerAxis)
         for (j <- 0 until pointsPerAxis) {
           val x6_p = rootCell.low(1) + (j + 0.5) * (x6Width / pointsPerAxis)
-          values(i * pointsPerAxis + j) = density.density(Vectors.dense(x4_p, x6_p))
+          if (coverageRegions.query(Vectors.dense(x4_p, x6_p)) <= coverage)
+            values(i * pointsPerAxis + j) = density.density(Vectors.dense(x4_p, x6_p))
+          else
+            values(i * pointsPerAxis + j) = 0.0
         }
       }
       Array(values).toIterable.toSeq.toDS.write.mode("overwrite").parquet(plotValuesPath)
     }
 
     def saveSample(density : DensityHistogram, sampleSize : Int, dimensions : Int, limitsPath : String, samplePath : String, seed : Long): Unit = {
-
+      
       val limits : Array[Double] = Array(
         density.tree.rootCell.low(0),
         density.tree.rootCell.high(0),
@@ -246,7 +250,6 @@ object SparksInTheDarkMain {
 
       val rng : UniformRandomProvider = RandomSource.XO_RO_SHI_RO_128_PP.create(seed)
       val sample = density.sample(rng, sampleSize).map(_.toArray)
-
       var arr : Array[Double] = new Array(dimensions * sample.length)
       println("ARRAY LENGTH:",arr.length,"ARRAY COUNT"," DIMENSIONS:",dimensions," SAMPLE LENGTH:",sample.length)
       for (i <- 0 until sample.length) {
@@ -259,7 +262,7 @@ object SparksInTheDarkMain {
     }
     val pointsPerAxis = 256
     saveSample(density,200,2,limitsPath,samplePath,1234)
-    savePlotValues(density, density.tree.rootCell, pointsPerAxis, limitsPath, plotValuesPath)
+    savePlotValues(density, density.tree.rootCell, 1, pointsPerAxis, limitsPath, plotValuesPath)
 
     /*
     def saveSupportPlot(density : DensityHistogram, rootCell : Rectangle, coverage : Double, limitsPath : String, supportPath : String): Unit = {
@@ -296,6 +299,8 @@ object SparksInTheDarkMain {
 
     def savePlotValuesCoverage(density : DensityHistogram, rootCell : Rectangle, coverage : Double, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String) = {
       val coverageRegions : TailProbabilities = density.tailProbabilities
+     // val tailProbabilities = density.tailProbabilities()
+     // val thresholdProbability = coverageRegions.confidenceRegion(0.5)
 
       val limits : Array[Double] = Array(
         rootCell.low(0),

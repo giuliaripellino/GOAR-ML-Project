@@ -2,7 +2,7 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
-from pyspark.sql import SparkSession
+#from pyspark.sql import SparkSession
 from matplotlib import cbook
 from matplotlib.colors import LightSource
 from matplotlib.ticker import LinearLocator
