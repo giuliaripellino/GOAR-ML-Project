@@ -51,7 +51,7 @@ object SparksInTheDarkMain {
     } else {
       "output/"
     }
-    val prefix: String = "4D_plotting/" // Supposed to define the output folder in "SparksInTheDark/output/"
+    val prefix: String = "4D_plotting_tailProb50/" // Supposed to define the output folder in "SparksInTheDark/output/"
     val treePath: String = rootPath + prefix + "spatialTree"
     val finestResDepthPath: String = rootPath + prefix + "finestRes"
     val finestHistPath: String = rootPath + prefix + "finestHist"
@@ -210,8 +210,9 @@ object SparksInTheDarkMain {
       Histogram(tree_histread, mdeCounts.map(_._2).reduce(_+_), fromNodeLabelMap(mdeCounts.collect.toMap))
     }
     val density = toDensityHistogram(mdeHist_read).normalize
-    def savePlotValues(density : DensityHistogram, rootCell : Rectangle, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String): Unit = {
+    def savePlotValues(density : DensityHistogram, rootCell : Rectangle, coverage : Double, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String): Unit = {
 
+      val coverageRegions : TailProbabilities = density.tailProbabilities()
       val limits: Array[Double] = Array(
         rootCell.low(0),
         rootCell.high(0),
@@ -219,8 +220,8 @@ object SparksInTheDarkMain {
         rootCell.high(1),
         rootCell.low(2),
         rootCell.high(2),
-        rootCell.low(3), // Fourth dimension low
-        rootCell.high(3) // Fourth dimension high
+        rootCell.low(3),
+        rootCell.high(3)
       )
       Array(limits).toIterable.toSeq.toDS.write.mode("overwrite").parquet(limitsPath)
 
@@ -230,7 +231,7 @@ object SparksInTheDarkMain {
       val x10Width = rootCell.high(3) - rootCell.low(3)
 
       val values: Array[Double] = new Array(pointsPerAxis * pointsPerAxis * pointsPerAxis * pointsPerAxis)
-      println("Filling array with a lot of values. Time-complexity here is O(n^4)... ")
+      println(s"Filling array with a lot of values. Time-complexity here is O(n^${dimensions})... ")
       for (i <- 0 until pointsPerAxis) {
         val x4_p = rootCell.low(0) + (i + 0.5) * (x4Width / pointsPerAxis)
         for (j <- 0 until pointsPerAxis) {
@@ -239,8 +240,13 @@ object SparksInTheDarkMain {
             val x8_p = rootCell.low(2) + (k + 0.5) * (x8Width / pointsPerAxis)
             for (l <- 0 until pointsPerAxis) { // Fourth dimension loop
               val x10_p = rootCell.low(3) + (l + 0.5) * (x10Width / pointsPerAxis)
-              values(i * pointsPerAxis * pointsPerAxis * pointsPerAxis + j * pointsPerAxis * pointsPerAxis + k * pointsPerAxis + l) =
-                density.density(Vectors.dense(x4_p, x6_p, x8_p, x10_p))
+              if (coverageRegions.query(Vectors.dense(x4_p, x6_p, x8_p, x10_p)) <= coverage) {
+                values(i * pointsPerAxis * pointsPerAxis * pointsPerAxis + j * pointsPerAxis * pointsPerAxis + k * pointsPerAxis + l) = density.density(Vectors.dense(x4_p, x6_p, x8_p, x10_p))
+              }
+              else {
+                values(i * pointsPerAxis * pointsPerAxis * pointsPerAxis + j * pointsPerAxis * pointsPerAxis + k * pointsPerAxis + l) = 0.0
+              }
+
             }
           }
         }
@@ -274,11 +280,10 @@ object SparksInTheDarkMain {
       Array(arr).toIterable.toSeq.toDS.write.mode("overwrite").parquet(samplePath)
       println("sampleValues saved!")
     }
-    // ---------------- DONT FORGET TO CHANGE THIS VALUE IN ../Postprocessing/plotting.py ------------------------------- //
     val pointsPerAxis = 64
-    // ------------------------------------------------------------------------------------------------------------------ //
+    val DensityPercentage = 0.5
     saveSample(density,filtered_bkg_count.toInt,dimensions,limitsPath,samplePath,seed)
-    savePlotValues(density, density.tree.rootCell, pointsPerAxis, limitsPath, plotValuesPath)
+    savePlotValues(density, density.tree.rootCell,DensityPercentage ,pointsPerAxis, limitsPath, plotValuesPath)
 
     // Plot mdeHists
     // important for this section is to have "limitsPath","valuesPath", "samplePath" defined and populated with parquet files.
