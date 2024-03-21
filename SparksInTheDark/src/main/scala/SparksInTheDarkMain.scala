@@ -51,7 +51,7 @@ object SparksInTheDarkMain {
     } else {
       "output/"
     }
-    val prefix: String = "HPS_count10000_sampleSize10000/" // Supposed to define the output folder in "SparksInTheDark/output/"
+    val prefix: String = "HPS_scaled_double_checks_signal/" // Supposed to define the output folder in "SparksInTheDark/output/"
     val treePath: String = rootPath + prefix + "spatialTree"
     val finestResDepthPath: String = rootPath + prefix + "finestRes"
     val finestHistPath: String = rootPath + prefix + "finestHist"
@@ -62,8 +62,8 @@ object SparksInTheDarkMain {
     val samplePath = rootPath + prefix + "sample"
 
     // Read in data from parquet
-    val background: String = rootPath + "ntuple_em_v2.parquet"
-    val signal: String = rootPath + "ntuple_SU2L_25_500_v2.parquet"
+    val background: String = rootPath + "ntuple_em_v2_scaled.parquet"
+    val signal: String = rootPath + "ntuple_SU2L_25_500_v2_scaled.parquet"
 
     val df_background: DataFrame = spark.read.parquet(background)
     df_background.show()
@@ -145,7 +145,7 @@ object SparksInTheDarkMain {
 
 
       // Setting a minimum count limit of 1e5. If a leaf if found with maximum leaf count larger than minimum; we pick that one.
-    val minimumCountLimit = 10000 //was 100000 // try with 10000 over night
+    val minimumCountLimit = 100 //was 100000 // try with 10000 over night
     val countedTrain = spark.read
       .parquet(trainingPath)
       .as[(NodeLabel, Count)]
@@ -158,7 +158,7 @@ object SparksInTheDarkMain {
       // This produces the most refined histogram we're willing to use as a density estimate
 
     implicit val ordering : Ordering[NodeLabel] = leftRightOrd
-    val sampleSizeHint = 10000 // was 1000
+    val sampleSizeHint = 10 // was 1000
     val partitioner = new SubtreePartitioner(numTrainingPartitions, countedTrain, sampleSizeHint)
     val depthLimit = partitioner.maxSubtreeDepth
     val subtreeRDD = countedTrain.repartitionAndSortWithinPartitions(partitioner)
@@ -264,7 +264,7 @@ object SparksInTheDarkMain {
       println("sampleValues saved!")
     }
     val pointsPerAxis = 256
-    saveSample(density,200,dimensions,limitsPath,samplePath,seed)
+    saveSample(density,filtered_bkg_count.toInt,dimensions,limitsPath,samplePath,seed)
     savePlotValues(density, density.tree.rootCell, pointsPerAxis, limitsPath, plotValuesPath)
 
     // Plot mdeHists
