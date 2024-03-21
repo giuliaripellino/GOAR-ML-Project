@@ -51,7 +51,7 @@ object SparksInTheDarkMain {
     } else {
       "output/"
     }
-    val prefix: String = "3D_plotting/" // Supposed to define the output folder in "SparksInTheDark/output/"
+    val prefix: String = "4D_plotting/" // Supposed to define the output folder in "SparksInTheDark/output/"
     val treePath: String = rootPath + prefix + "spatialTree"
     val finestResDepthPath: String = rootPath + prefix + "finestRes"
     val finestHistPath: String = rootPath + prefix + "finestHist"
@@ -62,8 +62,8 @@ object SparksInTheDarkMain {
     val samplePath = rootPath + prefix + "sample"
 
     // Read in data from parquet
-    val background: String = rootPath + "ntuple_em_v2.parquet"
-    val signal: String = rootPath + "ntuple_SU2L_25_500_v2.parquet"
+    val background: String = rootPath + "ntuple_em_v2_scaled.parquet"
+    val signal: String = rootPath + "ntuple_SU2L_25_500_v2_scaled.parquet"
 
     val df_background: DataFrame = spark.read.parquet(background)
     df_background.show()
@@ -74,7 +74,7 @@ object SparksInTheDarkMain {
     // Function which filters based on pre-defined pre-selection & selects the interesting variables
     def filterAndSelect(df: DataFrame): DataFrame = {
       val filtered_df = df.filter("jet_n == 6 AND bjet_n == 4")
-      val selectedColumns = filtered_df.select("deltaRLep2ndClosestBJet","LJet_m_plus_RCJet_m_12","bb_m_for_minDeltaR")
+      val selectedColumns = filtered_df.select("deltaRLep2ndClosestBJet","LJet_m_plus_RCJet_m_12","bb_m_for_minDeltaR","HT")
       selectedColumns
     }
     // TODO: HAS BEEN CHANGED TO MAKE BACKGROUND RUN. NEED MORE DATA
@@ -101,7 +101,8 @@ object SparksInTheDarkMain {
         val deltaRLep2ndClosestBJet = row.getAs[Float]("deltaRLep2ndClosestBJet").toDouble
         val lJet_m_plus_RCJet_m_12 = row.getAs[Float]("LJet_m_plus_RCJet_m_12").toDouble
         val bb_m_for_minDeltaR = row.getAs[Float]("bb_m_for_minDeltaR").toDouble
-        Vectors.dense(deltaRLep2ndClosestBJet, lJet_m_plus_RCJet_m_12, bb_m_for_minDeltaR)
+        val ht = row.getAs[Float]("HT").toDouble
+        Vectors.dense(deltaRLep2ndClosestBJet, lJet_m_plus_RCJet_m_12, bb_m_for_minDeltaR,ht)
         //Vectors.dense(bb_m_for_minDeltaR,lJet_m_plus_RCJet_m_12)
         }
       }
@@ -211,34 +212,43 @@ object SparksInTheDarkMain {
     val density = toDensityHistogram(mdeHist_read).normalize
     def savePlotValues(density : DensityHistogram, rootCell : Rectangle, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String): Unit = {
 
-      val limits : Array[Double] = Array(
+      val limits: Array[Double] = Array(
         rootCell.low(0),
         rootCell.high(0),
         rootCell.low(1),
         rootCell.high(1),
         rootCell.low(2),
-        rootCell.high(2)
+        rootCell.high(2),
+        rootCell.low(3), // Fourth dimension low
+        rootCell.high(3) // Fourth dimension high
       )
       Array(limits).toIterable.toSeq.toDS.write.mode("overwrite").parquet(limitsPath)
 
       val x4Width = rootCell.high(0) - rootCell.low(0)
       val x6Width = rootCell.high(1) - rootCell.low(1)
       val x8Width = rootCell.high(2) - rootCell.low(2)
+      val x10Width = rootCell.high(3) - rootCell.low(3)
 
-      val values: Array[Double] = new Array(pointsPerAxis * pointsPerAxis * pointsPerAxis)
-      println("Filling array with a lot of values. Time-complexity here is O(n^3)... ")
+      val values: Array[Double] = new Array(pointsPerAxis * pointsPerAxis * pointsPerAxis * pointsPerAxis)
+      println("Filling array with a lot of values. Time-complexity here is O(n^4)... ")
       for (i <- 0 until pointsPerAxis) {
         val x4_p = rootCell.low(0) + (i + 0.5) * (x4Width / pointsPerAxis)
         for (j <- 0 until pointsPerAxis) {
           val x6_p = rootCell.low(1) + (j + 0.5) * (x6Width / pointsPerAxis)
           for (k <- 0 until pointsPerAxis) {
             val x8_p = rootCell.low(2) + (k + 0.5) * (x8Width / pointsPerAxis)
-            values(i * pointsPerAxis * pointsPerAxis + j * pointsPerAxis + k) = density.density(Vectors.dense(x4_p, x6_p, x8_p))
+            for (l <- 0 until pointsPerAxis) { // Fourth dimension loop
+              val x10_p = rootCell.low(3) + (l + 0.5) * (x10Width / pointsPerAxis)
+              values(i * pointsPerAxis * pointsPerAxis * pointsPerAxis + j * pointsPerAxis * pointsPerAxis + k * pointsPerAxis + l) =
+                density.density(Vectors.dense(x4_p, x6_p, x8_p, x10_p))
+            }
           }
         }
       }
       Array(values).toIterable.toSeq.toDS.write.mode("overwrite").parquet(plotValuesPath)
+      println("Plot values saved!")
     }
+
 
     def saveSample(density : DensityHistogram, sampleSize : Int, dimensions : Int, limitsPath : String, samplePath : String, seed : Long): Unit = {
 
@@ -248,7 +258,7 @@ object SparksInTheDarkMain {
         density.tree.rootCell.low(1),
         density.tree.rootCell.high(1),
       )
-      //Array(limits).toIterable.toSeq.toDS.write.mode("overwrite").parquet(limitsPath)
+      Array(limits).toIterable.toSeq.toDS.write.mode("overwrite").parquet(limitsPath)
 
       val rng : UniformRandomProvider = RandomSource.XO_RO_SHI_RO_128_PP.create(seed)
       val sample = density.sample(rng, sampleSize).map(_.toArray)
@@ -264,15 +274,18 @@ object SparksInTheDarkMain {
       Array(arr).toIterable.toSeq.toDS.write.mode("overwrite").parquet(samplePath)
       println("sampleValues saved!")
     }
-    val pointsPerAxis = 256
-    saveSample(density,200,dimensions,limitsPath,samplePath,seed)
+    // ---------------- DONT FORGET TO CHANGE THIS VALUE IN ../Postprocessing/plotting.py ------------------------------- //
+    val pointsPerAxis = 64
+    // ------------------------------------------------------------------------------------------------------------------ //
+    saveSample(density,filtered_bkg_count.toInt,dimensions,limitsPath,samplePath,seed)
     savePlotValues(density, density.tree.rootCell, pointsPerAxis, limitsPath, plotValuesPath)
 
     // Plot mdeHists
     // important for this section is to have "limitsPath","valuesPath", "samplePath" defined and populated with parquet files.
     // Also populate this section with scala.sys.process._ , capable of calling ../postprocessing/plotting.py, where the plotting scripts will live
     val plottingScriptPath = "../Postprocessing/Plotting.py"
-    val process = Process(Seq("python3",plottingScriptPath,rootPath+prefix)).run()
+    val passString = rootPath + prefix
+    val process = Process(Seq("python3",plottingScriptPath,passString,pointsPerAxis.toString, dimensions.toString)).run()
     process.exitValue()
     /*
 
