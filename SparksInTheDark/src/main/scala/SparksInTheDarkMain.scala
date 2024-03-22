@@ -226,7 +226,7 @@ object SparksInTheDarkMain {
           val x6_p = rootCell.low(1) + (j + 0.5) * (x6Width / pointsPerAxis)
           for (k <- 0 until pointsPerAxis) {
             val x8_p = rootCell.low(2) + (k + 0.5) * (x8Width / pointsPerAxis)
-            for (l <- 0 until pointsPerAxis) { // Fourth dimension loop
+            for (l <- 0 until pointsPerAxis) {
               val x10_p = rootCell.low(3) + (l + 0.5) * (x10Width / pointsPerAxis)
               if (coverageRegions.query(Vectors.dense(x4_p, x6_p, x8_p, x10_p)) <= coverage) {
                 values(i * pointsPerAxis * pointsPerAxis * pointsPerAxis + j * pointsPerAxis * pointsPerAxis + k * pointsPerAxis + l) = density.density(Vectors.dense(x4_p, x6_p, x8_p, x10_p))
