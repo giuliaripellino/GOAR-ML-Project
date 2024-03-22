@@ -12,9 +12,10 @@ try:
     rootPath = sys.argv[1]
     pointsPerAxis = int(sys.argv[2])
     dimensions = int(sys.argv[3])
-    print(f"Using rootPath: '{rootPath}', ppAxis={pointsPerAxis} & dim={dimensions} from 'SparksInTheDarkMain.scala'")
+    inputDataPath = sys.argv[4]
+    print(f"Using rootPath: '{rootPath}', ppAxis={pointsPerAxis}, dim={dimensions} & inputDataPath='{inputDataPath}' from 'SparksInTheDarkMain.scala'")
 except:
-    rootPath = "output/4D_plotting_tailProb100"
+    rootPath = "output/4D_plotting_tailProb100_bkg_count1_res1e-7"
     pointsPerAxis = 64
     dimensions = 4
     print(f"Failed to fetch rootPath from SparksInTheDarkMain.scala... using '{rootPath}' instead")
@@ -24,11 +25,6 @@ except:
 limitsPath = f"../SparksInTheDark/{rootPath}/limits/"
 valuesPath = f"../SparksInTheDark/{rootPath}/plotValues/"
 samplePath = f"../SparksInTheDark/{rootPath}/sample/"
-
-# Path to original parquet file -----------------------------------------
-inputDataPath = f"../SparksInTheDark/output/ntuple_em_v2_scaled.parquet"
-# -----------------------------------------------------------------------
-
 savePath = f"../SparksInTheDark/{rootPath}/"
 saveFileName = "figures.pdf"
 
@@ -198,12 +194,12 @@ def plotHeatmaps(dimensions, limitsPath, samplePath, bins=100, cmap='coolwarm',v
     arrays_dict = {}
     for dimension in range(dimensions):
         arrays_dict[dimension] = xs[dimension,:]
-
+        print(np.max(xs[dimension,:]))
     axis_limits = {
-            r"$\Delta R(l,b_2)$": [0, 0.8],
-            r"$m_{J^{lep}} + m_{J^{had}}$": [0, 0.4],
-            r"$m_{bb\Delta R_{min}}$": [0, 0.23],
-            r"$H_T$": [0,0.26]
+            r"$\Delta R(l,b_2)$": [0, 1],
+            r"$m_{J^{lep}} + m_{J^{had}}$": [0, 1],
+            r"$m_{bb\Delta R_{min}}$": [0, 1],
+            r"$H_T$": [0,1]
         }
 
     pairs = [
@@ -244,10 +240,10 @@ def plot_all_permutations(dimensions=4, bins=100, cmap='coolwarm'):
     fig.suptitle("ORIGINAL DISTRIBUTIONS")
 
     axis_limits = {
-        r"$\Delta R(l,b_2)$": [0, 0.8],
-        r"$m_{J^{lep}} + m_{J^{had}}$": [0, 0.4],
-        r"$m_{bb\Delta R_{min}}$": [0, 0.23],
-        r"$H_T$": [0,0.26]
+        r"$\Delta R(l,b_2)$": [0, 1],
+        r"$m_{J^{lep}} + m_{J^{had}}$": [0, 1],
+        r"$m_{bb\Delta R_{min}}$": [0, 1],
+        r"$H_T$": [0,1]
     }
 
     pairs = [
