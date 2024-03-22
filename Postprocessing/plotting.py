@@ -65,10 +65,10 @@ def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath, variable_list):
     combination_list = {
         "X1_X2": [x1_min, x1_max, x2_min, x2_max],
         "X1_X3": [x1_min, x1_max, x3_min, x3_max],
-        "X1_X4": [x1_min, x1_max, x4_min, x4_max],  # New
+        "X1_X4": [x1_min, x1_max, x4_min, x4_max],
         "X2_X3": [x2_min, x2_max, x3_min, x3_max],
-        "X2_X4": [x2_min, x2_max, x4_min, x4_max],  # New
-        "X3_X4": [x3_min, x3_max, x4_min, x4_max]   # New
+        "X2_X4": [x2_min, x2_max, x4_min, x4_max],
+        "X3_X4": [x3_min, x3_max, x4_min, x4_max]
     }
 
     fig, axes = plt.subplots(2, 3, subplot_kw={"projection": "3d"}, figsize=(12, 7))
