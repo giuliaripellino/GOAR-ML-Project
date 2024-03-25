@@ -55,10 +55,10 @@ object SparksInTheDarkMain {
     val numCores = 8 // Number of cores in cluster
 
     val pointsPerAxis = 128 // Important parameter for d-dimensional nested for-loop. The larger value, the slower it will be. Time-complexity is O(pointsPerAxis^dimensions)
-    val DensityPercentage = 0.5
+    val DensityPercentage = 1
 
     val StringSigBkg: String = if (RunBackground) {"bkg"} else {"signal"}
-    val prefix: String = s"4D_plotting_tailProb${(DensityPercentage*100).toInt}_${StringSigBkg}_count${minimumCountLimit}_res${finestResSideLength}_2dtest/" // Supposed to define the output folder in "SparksInTheDark/output/"
+    val prefix: String = s"2D_plotting_tailProb${(DensityPercentage*100).toInt}_${StringSigBkg}_count${minimumCountLimit}_res${finestResSideLength}/" // Supposed to define the output folder in "SparksInTheDark/output/"
     // ===============================================================================
 
     // Defining paths
