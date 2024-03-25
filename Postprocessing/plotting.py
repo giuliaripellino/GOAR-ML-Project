@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import sys
+import re
 
 import matplotlib.pyplot as plt
 from matplotlib import cm, cbook
@@ -13,6 +14,7 @@ try:
     pointsPerAxis = int(sys.argv[2])
     dimensions = int(sys.argv[3])
     inputDataPath = sys.argv[4]
+    colStrings = sys.argv[5]
     print(f"Using rootPath: '{rootPath}', ppAxis={pointsPerAxis}, dim={dimensions} & inputDataPath='{inputDataPath}' from 'SparksInTheDarkMain.scala'")
 except:
     rootPath = "output/4D_plotting_tailProb100_bkg_count1_res1e-7"
@@ -21,12 +23,13 @@ except:
     print(f"Failed to fetch rootPath from SparksInTheDarkMain.scala... using '{rootPath}' instead")
     print(f"Failed to fetch pointsPerAxis from SparksInTheDarkMain.scala... using pointsPerAxis={pointsPerAxis}")
     print(f"Failed to fetch dimensions from SparksInTheDarkMain.scala... using dim={dimensions} instead")
-
+def extract_column_names(s): return re.findall(r'\b\w+\b', s)
+colList = extract_column_names(colStrings)
 limitsPath = f"../SparksInTheDark/{rootPath}/limits/"
 valuesPath = f"../SparksInTheDark/{rootPath}/plotValues/"
 samplePath = f"../SparksInTheDark/{rootPath}/sample/"
 savePath = f"../SparksInTheDark/{rootPath}/"
-saveFileName = "figures.pdf"
+saveFileName = f"figures_{colList[1]}_{colList[2]}.pdf"
 
 variable_list = {"X1":r"$\Delta R(l,b_2)$","X2":r"$m_{J^{lep}} + m_{J^{had}}$", "X3":r"$m_{bb\Delta R_{min}}$","X4":r"$H_T$"}
 variable_list2 = [r"$\Delta R(l,b_2)$", r"$m_{J^{lep}} + m_{J^{had}}$", r"$m_{bb\Delta R_{min}}$", r"$H_T$"]
@@ -41,70 +44,69 @@ def save_plots_to_pdf(file_path, plot_functions):
             plt.close()
     print(f"Plots saved as {file_path}")
 
-def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath, variable_list):
+def plotDensity(pointsPerAxis, z_max, limitsPath, valuesPath,colStrings):
     limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
     values = np.array(pd.read_parquet(valuesPath))[-1,-1]
+    print(colStrings,type(colStrings))
 
-    for i in range(0, len(limits), 2):
-        print(f"Variable {i//2 + 1} limits: ({limits[i]}, {limits[i+1]})")
+    x4_min = limits[0]
+    x4_max = limits[1]
+    x6_min = limits[2]
+    x6_max = limits[3]
 
-    x1_min, x1_max = limits[0], limits[1]
-    x2_min, x2_max = limits[2], limits[3]
-    x3_min, x3_max = limits[4], limits[5]
-    x4_min, x4_max = limits[6], limits[7]
+    x4_width = (x4_max - x4_min) / pointsPerAxis
+    x6_width = (x6_max - x6_min) / pointsPerAxis
 
-    z_full = np.zeros((pointsPerAxis, pointsPerAxis, pointsPerAxis, pointsPerAxis))
-    index = 0
+    x = np.arange(x4_min, x4_max, x4_width)
+    y = np.arange(x6_min, x6_max, x6_width)
+    x, y = np.meshgrid(x, y, indexing='ij')
+
+    z = np.empty((pointsPerAxis,pointsPerAxis))
     for i in range(pointsPerAxis):
         for j in range(pointsPerAxis):
-            for k in range(pointsPerAxis):
-                for l in range(pointsPerAxis):
-                    z_full[i, j, k, l] = values[index]
-                    index += 1
+            z[i,j] = values[i*pointsPerAxis + j]
 
-    combination_list = {
-        "X1_X2": [x1_min, x1_max, x2_min, x2_max],
-        "X1_X3": [x1_min, x1_max, x3_min, x3_max],
-        "X1_X4": [x1_min, x1_max, x4_min, x4_max],
-        "X2_X3": [x2_min, x2_max, x3_min, x3_max],
-        "X2_X4": [x2_min, x2_max, x4_min, x4_max],
-        "X3_X4": [x3_min, x3_max, x4_min, x4_max]
-    }
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
 
-    fig, axes = plt.subplots(2, 3, subplot_kw={"projection": "3d"}, figsize=(12, 7))
-    axes = axes.flatten()
+    # Plot the surface.
+    surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+    # surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
 
-    for i, (combination, minmaxlist) in enumerate(combination_list.items()):
-        xlabel, ylabel = combination.split("_")
-        ax = axes[i]
+    # Customize the z axis.
+    #ax.set_zlim(0.0, z_max)
+    ax.set_xlim(x4_min, x4_max)
+    ax.set_ylim(x6_min, x6_max)
+    ax.set_xlabel(colStrings[1])
+    ax.set_ylabel(colStrings[2])
+    ax.set_zlabel(f'f_n({colStrings[1]},{colStrings[2]})')
+    ax.invert_xaxis()
 
-        x_width = (minmaxlist[1] - minmaxlist[0]) / pointsPerAxis
-        y_width = (minmaxlist[3] - minmaxlist[2]) / pointsPerAxis
+def scatterPlot(dimensions, alph, limitsPath, samplePath,colStrings):
 
-        x = np.arange(minmaxlist[0], minmaxlist[1], x_width)
-        y = np.arange(minmaxlist[2], minmaxlist[3], y_width)
+    limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
+    values = np.array(pd.read_parquet(samplePath))[-1,-1]
 
-        x, y = np.meshgrid(x, y, indexing='ij')
+    length = int(len(values) / dimensions)
 
-        if combination == "X1_X2":
-            z = z_full[:,:,0,0]
-        elif combination == "X1_X3":
-            z = z_full[:,0,:,0]
-        elif combination == "X1_X4":
-            z = z_full[:,0,0,:]
-        elif combination == "X2_X3":
-            z = z_full[0,:,:,0]
-        elif combination == "X2_X4":
-            z = z_full[0,:,0,:]
-        elif combination == "X3_X4":
-            z = z_full[0,0,:,:]
+    xs = np.ndarray(shape=(dimensions, length))
+    for i in range(dimensions):
+        for j in range(length):
+            xs[i,j] = values[dimensions*j + i]
 
-        surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-        xlabel = variable_list.get(xlabel, xlabel)
-        ylabel = variable_list.get(ylabel, ylabel)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ax.invert_xaxis()
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+
+    axs[0].scatter(xs[0, :], xs[1, :], alpha=alph)
+    axs[0].set_xlabel(colStrings[1])
+    axs[0].set_ylabel(colStrings[2])
+
+    xbins = np.linspace(xs[0, :].min(), xs[0, :].max(), 50)
+    ybins = np.linspace(xs[1, :].min(), xs[1, :].max(), 50)
+
+    h, xedges, yedges, img = axs[1].hist2d(xs[0, :], xs[1, :], bins=[xbins, ybins], cmap='coolwarm')
+    fig.colorbar(img, ax=axs[1], label='Count')
+    axs[1].set_xlabel(colStrings[1])
+    axs[1].set_ylabel(colStrings[2])
+
 
 def plotDensity2D(pointsPerAxis, z_max, limitsPath, valuesPath,variable_list):
     limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
@@ -270,10 +272,11 @@ def plot_all_permutations(dimensions=4, bins=100, cmap='coolwarm'):
 
 
 plot_functions = [
-    (plotDensity,(pointsPerAxis,0.0002, limitsPath, valuesPath,variable_list)),
-    (plotDensity2D,(pointsPerAxis,0.0002, limitsPath, valuesPath,variable_list)),
-    (plot_all_permutations,()),
-    (plotHeatmaps,(dimensions,limitsPath,samplePath)),
+    (plotDensity,(pointsPerAxis,0.0002, limitsPath, valuesPath,colList)),
+    (scatterPlot,(dimensions,1,limitsPath,samplePath,colList))
+    #(plotDensity2D,(pointsPerAxis,0.0002, limitsPath, valuesPath,variable_list)),
+    #(plot_all_permutations,()),
+    #(plotHeatmaps,(dimensions,limitsPath,samplePath)),
 ]
 
 save_plots_to_pdf(savePath + saveFileName, plot_functions)
