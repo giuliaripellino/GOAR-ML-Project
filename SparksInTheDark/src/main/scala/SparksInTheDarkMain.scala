@@ -49,7 +49,7 @@ object SparksInTheDarkMain {
     val numTrainingPartitions = 100
     val finestResSideLength = 1e-5
     val sampleSizeHint = 1000
-    val minimumCountLimit = 1
+    val minimumCountLimit = 10
 
     val kInMDE = 10
     val numCores = 8 // Number of cores in cluster
@@ -207,8 +207,8 @@ object SparksInTheDarkMain {
         Histogram(tree_histread, mdeCounts.map(_._2).reduce(_+_), fromNodeLabelMap(mdeCounts.collect.toMap))
       }
       val density = toDensityHistogram(mdeHist_read).normalize
-      def savePlotValues(density : DensityHistogram, rootCell : Rectangle, coverage : Double, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String): Unit = {
 
+      def savePlotValues(density : DensityHistogram, rootCell : Rectangle, coverage : Double, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String): Unit = {
         val coverageRegions : TailProbabilities = density.tailProbabilities
         val limits : Array[Double] = Array(
           rootCell.low(0),
