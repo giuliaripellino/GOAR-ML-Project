@@ -10,6 +10,8 @@ from matplotlib.colors import LightSource
 from itertools import combinations
 from matplotlib.patches import Rectangle, PathPatch
 import mpl_toolkits.mplot3d.art3d as art3d
+from matplotlib.ticker import FixedLocator
+import csv
 
 try:
     rootPath = sys.argv[1]
@@ -33,9 +35,29 @@ limitsPath = f"../SparksInTheDark/{rootPath}/limits/"
 valuesPath = f"../SparksInTheDark/{rootPath}/plotValues/"
 samplePath = f"../SparksInTheDark/{rootPath}/sample/"
 savePath = f"../SparksInTheDark/{rootPath}/"
-saveFileName = f"figures_{colList[1]}_{colList[2]}.pdf"
+if 'SU2L' in inputDataPath:
+    scaling_factors_path = f"../scaling_factors_signal.csv"
+else: scaling_factors_path = f"../scaling_factors_bkg.csv"
 
-variable_list = {"deltaRLep2ndClosestBJet":r"$\Delta R(l,b_2)$","LJet_m_plus_RCJet_m_12":r"$m_{J^{lep}} + m_{J^{had}}$", "bb_m_for_minDeltaR":r"$m_{bb_{\Delta R_{min}}}$","HT":r"$H_T$"}
+saveFileName = f"figures_{colList[1]}_{colList[2]}.pdf"
+variable_list = {"deltaRLep2ndClosestBJet":r"$\Delta R(l,b_2)$","LJet_m_plus_RCJet_m_12":r"$m_{J^{lep}} + m_{J^{had}}$ [GeV]", "bb_m_for_minDeltaR":r"$m_{bb_{\Delta R_{min}}}$ [GeV]","HT":r"$H_T$ [GeV]"}
+
+def UnScaling(scaling_factors_path,variables):
+    scaling_factors = {}
+    with open(scaling_factors_path, mode='r') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            feature = row['Variable']
+            min_val = float(row['Min'])
+            max_val = float(row['Max'])
+            scaling_factors[feature] = {'min': min_val, 'max': max_val}
+    return scaling_factors
+
+scaling_factors = UnScaling(scaling_factors_path,variable_list.keys())
+
+def original_value(min_val, max_val, normalized_val): return min_val + (max_val - min_val) * normalized_val
+normalized_ticks = np.linspace(0, 1, 10)
+
 
 def save_plots_to_pdf(file_path, plot_functions):
     with PdfPages(file_path) as pdf:
@@ -68,18 +90,34 @@ def plotDensity(pointsPerAxis, limitsPath, valuesPath,colStrings):
     #Reshape to get correct way around
     z = z.T
 
-    fig = plt.figure(figsize=(12, 5))
+    # Transform x,y-ticks
+    x_ticks = [original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], val) for val in normalized_ticks]
+    y_ticks = [original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], val) for val in normalized_ticks]
+
+    fig = plt.figure(figsize=(15, 5))
     fig.suptitle("Density Estimates")
     ax3d = fig.add_subplot(1, 2, 1, projection='3d')
     surf = ax3d.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    fig.colorbar(surf, ax=ax3d, shrink=0.5, aspect=10,label=r"$f_n$")
+    fig.colorbar(surf, ax=ax3d, shrink=0.5, aspect=10,label=r"$f_n$",location='left')
     ax3d.set_xlabel(variable_list[colStrings[1]])
     ax3d.set_ylabel(variable_list[colStrings[2]])
+
+    ax3d.xaxis.set_major_locator(FixedLocator(normalized_ticks))
+    ax3d.yaxis.set_major_locator(FixedLocator(normalized_ticks))
+    ax3d.set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=8)
+    ax3d.set_yticklabels([f'{y:.1f}' for y in y_ticks],fontsize=8)
     ax3d.invert_xaxis()
 
     ax2d = fig.add_subplot(1, 2, 2)
     heatmap = ax2d.imshow(z, cmap=cm.coolwarm, extent=[x_min, x_max,y_min, y_max], origin='lower', aspect='auto')
     fig.colorbar(heatmap, ax=ax2d, shrink=0.5, aspect=10,label=r"$f_n$")
+
+    ax2d.xaxis.set_major_locator(FixedLocator(normalized_ticks))
+    ax2d.yaxis.set_major_locator(FixedLocator(normalized_ticks))
+    ax2d.set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=8)
+
+    ax2d.set_yticklabels([f'{y:.1f}' for y in y_ticks],fontsize=8)
+
     ax2d.set_xlabel(variable_list[colStrings[1]])
     ax2d.set_ylabel(variable_list[colStrings[2]])
 
@@ -95,7 +133,11 @@ def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
         for j in range(length):
             xs[i,j] = values[dimensions*j + i]
 
-    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+    fig, axs = plt.subplots(1, 2, figsize=(15, 5))
+
+    # Transform x,y-ticks
+    x_ticks = [original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], val) for val in normalized_ticks]
+    y_ticks = [original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], val) for val in normalized_ticks]
 
 
     xbins_original = np.linspace(scaled_input_data[colStrings[1]].min(), scaled_input_data[colStrings[1]].max(), 50)
@@ -104,6 +146,13 @@ def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
     fig.colorbar(img_original, ax=axs[0], label='Counts')
     axs[0].set_xlabel(variable_list[colStrings[1]])
     axs[0].set_ylabel(variable_list[colStrings[2]])
+
+    axs[0].xaxis.set_major_locator(FixedLocator(normalized_ticks))
+    axs[0].yaxis.set_major_locator(FixedLocator(normalized_ticks))
+    axs[0].set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=8)
+    axs[0].set_yticklabels([f'{y:.1f}' for y in y_ticks],fontsize=8)
+
+
     axs[0].set_title("Original Distribution")
 
 
@@ -115,6 +164,10 @@ def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
     axs[1].set_ylabel(variable_list[colStrings[2]])
     axs[1].set_xlim(0,1)
     axs[1].set_ylim(0,1)
+    axs[1].xaxis.set_major_locator(FixedLocator(normalized_ticks))
+    axs[1].yaxis.set_major_locator(FixedLocator(normalized_ticks))
+    axs[1].set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=8)
+    axs[1].set_yticklabels([f'{y:.1f}' for y in y_ticks],fontsize=8)
     axs[1].set_title("Distribution from method")
 
 plot_functions = [
