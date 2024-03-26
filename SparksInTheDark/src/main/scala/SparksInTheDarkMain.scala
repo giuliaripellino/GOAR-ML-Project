@@ -131,10 +131,8 @@ object SparksInTheDarkMain {
       val trainingRDD = df_to_RDD(trainingDF,col1, col2).repartition(numTrainingPartitions)
       val validationRDD = df_to_RDD(validationDF,col1, col2).repartition(numTrainingPartitions)
 
-      trainingRDD.take(5).foreach(println)
-
       val dimensions = trainingRDD.first().size
-      println(dimensions)
+
       // Getting the RDDs into mdeHists
 
       //  Deriving the box hull of validation & training data. This will be our root regular paving
@@ -222,7 +220,6 @@ object SparksInTheDarkMain {
         val x6Width = rootCell.high(1) - rootCell.low(1)
 
         val values : Array[Double] = new Array(pointsPerAxis * pointsPerAxis)
-
         for (i <- 0 until pointsPerAxis) {
           val x4_p = rootCell.low(0) + (i + 0.5) * (x4Width / pointsPerAxis)
           for (j <- 0 until pointsPerAxis) {
@@ -250,7 +247,6 @@ object SparksInTheDarkMain {
         val rng : UniformRandomProvider = RandomSource.XO_RO_SHI_RO_128_PP.create(seed)
         val sample = density.sample(rng, sampleSize).map(_.toArray)
         var arr : Array[Double] = new Array(dimensions * sample.length)
-        println("ARRAY LENGTH:",arr.length,"ARRAY COUNT"," DIMENSIONS:",dimensions," SAMPLE LENGTH:",sample.length)
         for (i <- sample.indices) {
           for (j <- 0 until dimensions) {
             arr(j + dimensions*i) = sample(i)(j)
