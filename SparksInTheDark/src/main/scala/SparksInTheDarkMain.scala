@@ -46,7 +46,7 @@ object SparksInTheDarkMain {
 
     val Filtering: Boolean = false
 
-    val numTrainingPartitions = 100
+    val numTrainingPartitions = 1000
     val finestResSideLength = 1e-5
     val sampleSizeHint = 1000
     val minimumCountLimit = 1
@@ -284,7 +284,7 @@ object SparksInTheDarkMain {
         col1 = "LJet_m_plus_RCJet_m_12"
         col2 = "HT"
       }
-      else if (margin == margin5){
+      else if (margin == margin6){
         col1 = "bb_m_for_minDeltaR"
         col2 = "HT"
       }
