@@ -11,7 +11,7 @@ from matplotlib.colors import LightSource
 from itertools import combinations
 import mpl_toolkits.mplot3d.art3d as art3d
 from matplotlib.ticker import FixedLocator
-
+import matplotlib.patches as patches
 try:
     rootPath = sys.argv[1]
     pointsPerAxis = int(sys.argv[2])
@@ -78,6 +78,11 @@ def plotDensity3D(pointsPerAxis, limitsPath, valuesPath, colStrings):
     values = np.array(pd.read_parquet(valuesPath))[-1, -1]
 
     x_min, x_max, y_min, y_max = limits[0], limits[1], limits[2], limits[3]
+    x_min = original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], x_min)
+    x_max = original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], x_max)
+    y_min = original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], y_min)
+    y_max = original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], y_max)
+
     x_width = (x_max - x_min) / pointsPerAxis
     y_width = (y_max - y_min) / pointsPerAxis
     x = np.arange(x_min, x_max, x_width)
@@ -90,19 +95,13 @@ def plotDensity3D(pointsPerAxis, limitsPath, valuesPath, colStrings):
             z[i, j] = values[i * pointsPerAxis + j]
     z = z.T
 
-    x_ticks = [original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], val) for val in normalized_ticks]
-    y_ticks = [original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], val) for val in normalized_ticks]
-
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection='3d')
     surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    fig.colorbar(surf, ax=ax, label=r"$f_n$", location='left', aspect=30,pad=0.01,shrink=0.7)
+    fig.colorbar(surf, ax=ax, label=r"$f_n$", location='right', aspect=30,pad=0.01,shrink=0.7)
     ax.set_xlabel(variable_list[colStrings[1]])
     ax.set_ylabel(variable_list[colStrings[2]])
-    ax.xaxis.set_major_locator(FixedLocator(normalized_ticks))
-    ax.yaxis.set_major_locator(FixedLocator(normalized_ticks))
-    ax.set_xticklabels([f'{x:.0f}' for x in x_ticks], fontsize=8, rotation=45)
-    ax.set_yticklabels([f'{y:.0f}' for y in y_ticks], fontsize=8, rotation=-45)
+
     ax.tick_params(axis='x', labelsize=8, pad=0.01)
     ax.tick_params(axis='y', labelsize=8, pad=0.01)
     ax.tick_params(axis='z', labelsize=8, pad=0.5)
@@ -113,6 +112,12 @@ def plotDensity2D(pointsPerAxis, limitsPath, valuesPath, colStrings):
     values = np.array(pd.read_parquet(valuesPath))[-1, -1]
 
     x_min, x_max, y_min, y_max = limits[0], limits[1], limits[2], limits[3]
+
+    x_min = original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], x_min)
+    x_max = original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], x_max)
+    y_min = original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], y_min)
+    y_max = original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], y_max)
+
     x_width = (x_max - x_min) / pointsPerAxis
     y_width = (y_max - y_min) / pointsPerAxis
     x = np.arange(x_min, x_max, x_width)
@@ -124,26 +129,13 @@ def plotDensity2D(pointsPerAxis, limitsPath, valuesPath, colStrings):
             z[i, j] = values[i * pointsPerAxis + j]
     z = z.T
 
-    # Preparing the ticks for the x and y axes based on the scaling factors and normalized ticks
-    x_ticks = [original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], val) for val in normalized_ticks]
-    y_ticks = [original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], val) for val in normalized_ticks]
-
     fig, ax = plt.figure(figsize=(8, 6),tight_layout=True), plt.gca()
     heatmap = ax.imshow(z, cmap='coolwarm', extent=[x_min, x_max, y_min, y_max], origin='lower', aspect='auto')
     fig.colorbar(heatmap, ax=ax, label=r"$f_n$")
 
-    # Setting the major locator for x and y axes
-    ax.xaxis.set_major_locator(FixedLocator(normalized_ticks))
-    ax.yaxis.set_major_locator(FixedLocator(normalized_ticks))
 
-    # Adjusting the tick labels for readability
-    ax.set_xticklabels([f'{x:.0f}' for x in x_ticks], fontsize=8)
-    ax.set_yticklabels([f'{y:.0f}' for y in y_ticks], fontsize=8)
-
-    # Setting the labels for the axes
     ax.set_xlabel(variable_list[colStrings[1]])
     ax.set_ylabel(variable_list[colStrings[2]])
-
 
 def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
     limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
@@ -195,7 +187,7 @@ def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
 plot_functions = [
     (plotDensity3D,(pointsPerAxis, limitsPath, valuesPath,colList)),
     (plotDensity2D,(pointsPerAxis, limitsPath, valuesPath,colList)),
-    (scatterPlot,(dimensions,limitsPath,samplePath,colList)),
+    #(scatterPlot,(dimensions,limitsPath,samplePath,colList)),
 ]
 
 save_plots_to_pdf_and_eps(savePath + saveFileName, plot_functions)
