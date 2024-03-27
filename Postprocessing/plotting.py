@@ -187,7 +187,7 @@ def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
 plot_functions = [
     (plotDensity3D,(pointsPerAxis, limitsPath, valuesPath,colList)),
     (plotDensity2D,(pointsPerAxis, limitsPath, valuesPath,colList)),
-    #(scatterPlot,(dimensions,limitsPath,samplePath,colList)),
+    (scatterPlot,(dimensions,limitsPath,samplePath,colList)),
 ]
 
 save_plots_to_pdf_and_eps(savePath + saveFileName, plot_functions)
