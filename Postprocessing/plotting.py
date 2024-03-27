@@ -60,66 +60,90 @@ def original_value(min_val, max_val, normalized_val): return min_val + (max_val 
 normalized_ticks = np.linspace(0, 1, 10)
 
 
-def save_plots_to_pdf(file_path, plot_functions):
+def save_plots_to_pdf_and_eps(file_path, plot_functions):
+    base_file_path = file_path.rsplit('.', 1)[0]
     with PdfPages(file_path) as pdf:
-        for plot_function, arguments in plot_functions:
+        for index, (plot_function, arguments) in enumerate(plot_functions):
             plt.figure()
             plot_function(*arguments)
-            plt.tight_layout()
+            #plt.tight_layout()
             pdf.savefig()
+            eps_file_path = f"{base_file_path}_{index+1}.eps"
+            plt.savefig(eps_file_path, format='eps',bbox_inches='tight')
             plt.close()
-    print(f"Plots saved as {file_path}")
+    print(f"Plots saved as {file_path} and individual .eps files")
 
-def plotDensity(pointsPerAxis, limitsPath, valuesPath,colStrings):
-    limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
-    values = np.array(pd.read_parquet(valuesPath))[-1,-1]
+def plotDensity3D(pointsPerAxis, limitsPath, valuesPath, colStrings):
+    limits = np.array(pd.read_parquet(limitsPath))[-1, -1]
+    values = np.array(pd.read_parquet(valuesPath))[-1, -1]
 
     x_min, x_max, y_min, y_max = limits[0], limits[1], limits[2], limits[3]
-
     x_width = (x_max - x_min) / pointsPerAxis
     y_width = (y_max - y_min) / pointsPerAxis
-
     x = np.arange(x_min, x_max, x_width)
     y = np.arange(y_min, y_max, y_width)
     x, y = np.meshgrid(x, y)
 
-    z = np.empty((pointsPerAxis,pointsPerAxis))
+    z = np.empty((pointsPerAxis, pointsPerAxis))
     for i in range(pointsPerAxis):
         for j in range(pointsPerAxis):
-            z[i,j] = values[i*pointsPerAxis + j]
-
-    #Reshape to get correct way around
+            z[i, j] = values[i * pointsPerAxis + j]
     z = z.T
 
     x_ticks = [original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], val) for val in normalized_ticks]
     y_ticks = [original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], val) for val in normalized_ticks]
 
-    fig = plt.figure(figsize=(15, 5))
-    fig.suptitle("Density Estimates")
-    ax3d = fig.add_subplot(1, 2, 1, projection='3d')
-    surf = ax3d.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    fig.colorbar(surf, ax=ax3d, shrink=0.5, aspect=10,label=r"$f_n$",location='left')
-    ax3d.set_xlabel(variable_list[colStrings[1]])
-    ax3d.set_ylabel(variable_list[colStrings[2]])
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection='3d')
+    surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+    fig.colorbar(surf, ax=ax, label=r"$f_n$", location='left', aspect=30,pad=0.01,shrink=0.7)
+    ax.set_xlabel(variable_list[colStrings[1]])
+    ax.set_ylabel(variable_list[colStrings[2]])
+    ax.xaxis.set_major_locator(FixedLocator(normalized_ticks))
+    ax.yaxis.set_major_locator(FixedLocator(normalized_ticks))
+    ax.set_xticklabels([f'{x:.0f}' for x in x_ticks], fontsize=8, rotation=45)
+    ax.set_yticklabels([f'{y:.0f}' for y in y_ticks], fontsize=8, rotation=-45)
+    ax.tick_params(axis='x', labelsize=8, pad=0.01)
+    ax.tick_params(axis='y', labelsize=8, pad=0.01)
+    ax.tick_params(axis='z', labelsize=8, pad=0.5)
+    ax.invert_xaxis()
 
-    ax3d.xaxis.set_major_locator(FixedLocator(normalized_ticks))
-    ax3d.yaxis.set_major_locator(FixedLocator(normalized_ticks))
-    ax3d.set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=8)
-    ax3d.set_yticklabels([f'{y:.1f}' for y in y_ticks],fontsize=8)
-    ax3d.invert_xaxis()
+def plotDensity2D(pointsPerAxis, limitsPath, valuesPath, colStrings):
+    limits = np.array(pd.read_parquet(limitsPath))[-1, -1]
+    values = np.array(pd.read_parquet(valuesPath))[-1, -1]
 
-    ax2d = fig.add_subplot(1, 2, 2)
-    heatmap = ax2d.imshow(z, cmap=cm.coolwarm, extent=[x_min, x_max,y_min, y_max], origin='lower', aspect='auto')
-    fig.colorbar(heatmap, ax=ax2d, shrink=0.5, aspect=10,label=r"$f_n$")
+    x_min, x_max, y_min, y_max = limits[0], limits[1], limits[2], limits[3]
+    x_width = (x_max - x_min) / pointsPerAxis
+    y_width = (y_max - y_min) / pointsPerAxis
+    x = np.arange(x_min, x_max, x_width)
+    y = np.arange(y_min, y_max, y_width)
 
-    ax2d.xaxis.set_major_locator(FixedLocator(normalized_ticks))
-    ax2d.yaxis.set_major_locator(FixedLocator(normalized_ticks))
-    ax2d.set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=8)
+    z = np.empty((pointsPerAxis, pointsPerAxis))
+    for i in range(pointsPerAxis):
+        for j in range(pointsPerAxis):
+            z[i, j] = values[i * pointsPerAxis + j]
+    z = z.T
 
-    ax2d.set_yticklabels([f'{y:.1f}' for y in y_ticks],fontsize=8)
+    # Preparing the ticks for the x and y axes based on the scaling factors and normalized ticks
+    x_ticks = [original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], val) for val in normalized_ticks]
+    y_ticks = [original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], val) for val in normalized_ticks]
 
-    ax2d.set_xlabel(variable_list[colStrings[1]])
-    ax2d.set_ylabel(variable_list[colStrings[2]])
+    fig, ax = plt.figure(figsize=(8, 6),tight_layout=True), plt.gca()
+    heatmap = ax.imshow(z, cmap='coolwarm', extent=[x_min, x_max, y_min, y_max], origin='lower', aspect='auto')
+    fig.colorbar(heatmap, ax=ax, label=r"$f_n$")
+
+    # Setting the major locator for x and y axes
+    ax.xaxis.set_major_locator(FixedLocator(normalized_ticks))
+    ax.yaxis.set_major_locator(FixedLocator(normalized_ticks))
+
+    # Adjusting the tick labels for readability
+    ax.set_xticklabels([f'{x:.0f}' for x in x_ticks], fontsize=8)
+    ax.set_yticklabels([f'{y:.0f}' for y in y_ticks], fontsize=8)
+
+    # Setting the labels for the axes
+    ax.set_xlabel(variable_list[colStrings[1]])
+    ax.set_ylabel(variable_list[colStrings[2]])
+
 
 def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
     limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
@@ -169,8 +193,9 @@ def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
     axs[1].set_title("Distribution from method")
 
 plot_functions = [
-    (plotDensity,(pointsPerAxis, limitsPath, valuesPath,colList)),
+    (plotDensity3D,(pointsPerAxis, limitsPath, valuesPath,colList)),
+    (plotDensity2D,(pointsPerAxis, limitsPath, valuesPath,colList)),
     (scatterPlot,(dimensions,limitsPath,samplePath,colList)),
 ]
 
-save_plots_to_pdf(savePath + saveFileName, plot_functions)
+save_plots_to_pdf_and_eps(savePath + saveFileName, plot_functions)
