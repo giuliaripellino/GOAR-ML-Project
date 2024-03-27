@@ -42,23 +42,23 @@ object SparksInTheDarkMain {
     // ============================= PARAMETER LIST ==================================
     val gcloudRunning: Boolean = false // local running (i.e. false) is mostly used for testing
 
-    val RunBackground: Boolean = false // if false, we run on signal. if true, we run on background
+    val RunBackground: Boolean = true // if false, we run on signal. if true, we run on background
 
     val Filtering: Boolean = false
 
-    val numTrainingPartitions = 100
-    val finestResSideLength = 1e-7
-    val sampleSizeHint = 10000
+    val numTrainingPartitions = 1000
+    val finestResSideLength = 1e-5
+    val sampleSizeHint = 1000
     val minimumCountLimit = 1
 
     val kInMDE = 10
     val numCores = 8 // Number of cores in cluster
 
-    val pointsPerAxis = 64 // Important parameter for d-dimensional nested for-loop. The larger value, the slower it will be. Time-complexity is O(pointsPerAxis^dimensions)
+    val pointsPerAxis = 256 // Important parameter for d-dimensional nested for-loop. The larger value, the slower it will be. Time-complexity is O(pointsPerAxis^dimensions)
     val DensityPercentage = 1
 
     val StringSigBkg: String = if (RunBackground) {"bkg"} else {"signal"}
-    val prefix: String = s"4D_plotting_tailProb${(DensityPercentage*100).toInt}_${StringSigBkg}_count${minimumCountLimit}_res${finestResSideLength}/" // Supposed to define the output folder in "SparksInTheDark/output/"
+    val prefix: String = s"4D_marginalization_tailProb${(DensityPercentage*100).toInt}_${StringSigBkg}_count${minimumCountLimit}_res${finestResSideLength}/" // Supposed to define the output folder in "SparksInTheDark/output/"
     // ===============================================================================
 
     // Defining paths
@@ -198,49 +198,41 @@ object SparksInTheDarkMain {
       Histogram(tree_histread, mdeCounts.map(_._2).reduce(_+_), fromNodeLabelMap(mdeCounts.collect.toMap))
     }
     val density = toDensityHistogram(mdeHist_read).normalize
-    def savePlotValues(density : DensityHistogram, rootCell : Rectangle, coverage : Double, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String): Unit = {
 
-      val coverageRegions : TailProbabilities = density.tailProbabilities()
-      val limits: Array[Double] = Array(
+    val margin1 = marginalize(density,Vector(0,1)).normalize
+    val margin2 = marginalize(density,Vector(0,2)).normalize
+    val margin3 = marginalize(density,Vector(0,3)).normalize
+    val margin4 = marginalize(density,Vector(1,2)).normalize
+    val margin5 = marginalize(density,Vector(1,3)).normalize
+    val margin6 = marginalize(density,Vector(2,3)).normalize
+
+    val margin_dimension = margin1.tree.rootCell.dimension()
+
+    def savePlotValues(density : DensityHistogram, rootCell : Rectangle, coverage : Double, pointsPerAxis : Int, limitsPath : String, plotValuesPath : String): Unit = {
+      val coverageRegions : TailProbabilities = density.tailProbabilities
+      val limits : Array[Double] = Array(
         rootCell.low(0),
         rootCell.high(0),
         rootCell.low(1),
         rootCell.high(1),
-        rootCell.low(2),
-        rootCell.high(2),
-        rootCell.low(3),
-        rootCell.high(3)
       )
       Array(limits).toIterable.toSeq.toDS.write.mode("overwrite").parquet(limitsPath)
 
       val x4Width = rootCell.high(0) - rootCell.low(0)
       val x6Width = rootCell.high(1) - rootCell.low(1)
-      val x8Width = rootCell.high(2) - rootCell.low(2)
-      val x10Width = rootCell.high(3) - rootCell.low(3)
 
-      val values: Array[Double] = new Array(pointsPerAxis * pointsPerAxis * pointsPerAxis * pointsPerAxis)
-      println(s"Filling array with a lot of values. Time-complexity here is O(n^${dimensions})... ")
+      val values : Array[Double] = new Array(pointsPerAxis * pointsPerAxis)
       for (i <- 0 until pointsPerAxis) {
         val x4_p = rootCell.low(0) + (i + 0.5) * (x4Width / pointsPerAxis)
         for (j <- 0 until pointsPerAxis) {
           val x6_p = rootCell.low(1) + (j + 0.5) * (x6Width / pointsPerAxis)
-          for (k <- 0 until pointsPerAxis) {
-            val x8_p = rootCell.low(2) + (k + 0.5) * (x8Width / pointsPerAxis)
-            for (l <- 0 until pointsPerAxis) {
-              val x10_p = rootCell.low(3) + (l + 0.5) * (x10Width / pointsPerAxis)
-              if (coverageRegions.query(Vectors.dense(x4_p, x6_p, x8_p, x10_p)) <= coverage) {
-                values(i * pointsPerAxis * pointsPerAxis * pointsPerAxis + j * pointsPerAxis * pointsPerAxis + k * pointsPerAxis + l) = density.density(Vectors.dense(x4_p, x6_p, x8_p, x10_p))
-              }
-              else {
-                values(i * pointsPerAxis * pointsPerAxis * pointsPerAxis + j * pointsPerAxis * pointsPerAxis + k * pointsPerAxis + l) = 0.0
-              }
-
-            }
-          }
+          if (coverageRegions.query(Vectors.dense(x4_p, x6_p)) <= coverage)
+            values(i * pointsPerAxis + j) = density.density(Vectors.dense(x4_p, x6_p))
+          else
+            values(i * pointsPerAxis + j) = 0.0
         }
       }
       Array(values).toIterable.toSeq.toDS.write.mode("overwrite").parquet(plotValuesPath)
-      println("Plot values saved!")
     }
 
 
@@ -256,9 +248,7 @@ object SparksInTheDarkMain {
 
       val rng : UniformRandomProvider = RandomSource.XO_RO_SHI_RO_128_PP.create(seed)
       val sample = density.sample(rng, sampleSize).map(_.toArray)
-
       var arr : Array[Double] = new Array(dimensions * sample.length)
-      println("ARRAY LENGTH:",arr.length,"ARRAY COUNT"," DIMENSIONS:",dimensions," SAMPLE LENGTH:",sample.length)
       for (i <- sample.indices) {
         for (j <- 0 until dimensions) {
           arr(j + dimensions*i) = sample(i)(j)
@@ -266,20 +256,52 @@ object SparksInTheDarkMain {
       }
 
       Array(arr).toIterable.toSeq.toDS.write.mode("overwrite").parquet(samplePath)
-      println("sampleValues saved!")
     }
 
-    saveSample(density,filtered_data_count.toInt,dimensions,limitsPath,samplePath,seed)
-    savePlotValues(density, density.tree.rootCell,DensityPercentage ,pointsPerAxis, limitsPath, plotValuesPath)
+    /* Looping through all of the margin combinations*/
+    val combList = List(margin1, margin2, margin3, margin4, margin5, margin6)
+    var col1: String = ""
+    var col2: String = ""
 
-    // Plot mdeHists
-    // important for this section is to have "limitsPath","valuesPath", "samplePath" defined and populated with parquet files.
-    // Also populate this section with scala.sys.process._ , capable of calling ../postprocessing/plotting.py, where the plotting scripts will live
-    val plottingScriptPath = "../Postprocessing/Plotting.py"
-    val originalDataPath: String = if (RunBackground) {background}  else {signal}
-    val passString = rootPath + prefix
-    val process = Process(Seq("python3",plottingScriptPath,passString,pointsPerAxis.toString, dimensions.toString, originalDataPath)).run()
-    process.exitValue()
+    for (margin <- combList) {
+      if (margin == margin1) {
+        col1 = "deltaRLep2ndClosestBJet"
+        col2 = "LJet_m_plus_RCJet_m_12"
+      }
+      else if (margin == margin2) {
+        col1 = "deltaRLep2ndClosestBJet"
+        col2 = "bb_m_for_minDeltaR"
+      }
+      else if (margin == margin3){
+        col1 = "deltaRLep2ndClosestBJet"
+        col2 = "HT"
+      }
+      else if (margin == margin4){
+        col1 = "LJet_m_plus_RCJet_m_12"
+        col2 = "bb_m_for_minDeltaR"
+      }
+      else if (margin == margin5){
+        col1 = "LJet_m_plus_RCJet_m_12"
+        col2 = "HT"
+      }
+      else if (margin == margin6){
+        col1 = "bb_m_for_minDeltaR"
+        col2 = "HT"
+      }
+
+      saveSample(margin,filtered_data_count.toInt,margin_dimension,limitsPath,samplePath,seed)
+      savePlotValues(margin, margin.tree.rootCell,DensityPercentage ,pointsPerAxis, limitsPath, plotValuesPath)
+
+      val plottingScriptPath = "../Postprocessing/Plotting.py"
+      val originalDataPath: String = if (RunBackground) {background}  else {signal}
+      val passString = rootPath + prefix
+      val ColStrings = List(col1,col2)
+      val process = Process(Seq("python3",plottingScriptPath,passString,pointsPerAxis.toString, margin_dimension.toString, originalDataPath,ColStrings.toString)).run()
+      process.exitValue()
+
+
+
+    }
 
     /*
    // Get 10% highest density regions
