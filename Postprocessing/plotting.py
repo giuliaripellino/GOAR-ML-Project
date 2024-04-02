@@ -43,6 +43,10 @@ else: scaling_factors_path = f"../scaling_factors_bkg.csv"
 saveFileName = f"figures_{colList[1]}_{colList[2]}.pdf"
 variable_list = {"deltaRLep2ndClosestBJet":r"$\Delta R(l,b_2)$","LJet_m_plus_RCJet_m_12":r"$m_{J^{lep}} + m_{J^{had}}$ [GeV]", "bb_m_for_minDeltaR":r"$m_{bb_{\Delta R_{min}}}$ [GeV]","HT":r"$H_T$ [GeV]"}
 
+## -----------------------------
+scale_axes = false
+## -----------------------------
+
 def UnScaling(scaling_factors_path,variables):
     scaling_factors = {}
     with open(scaling_factors_path, mode='r') as file:
@@ -77,11 +81,10 @@ def plotDensity3D(pointsPerAxis, limitsPath, valuesPath, colStrings):
     limits = np.array(pd.read_parquet(limitsPath))[-1, -1]
     values = np.array(pd.read_parquet(valuesPath))[-1, -1]
 
-    x_min, x_max, y_min, y_max = limits[0], limits[1], limits[2], limits[3]
-    x_min = original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], x_min)
-    x_max = original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], x_max)
-    y_min = original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], y_min)
-    y_max = original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], y_max)
+    x_min = original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], limits[0])
+    x_max = original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], limits[1])
+    y_min = original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], limits[2])
+    y_max = original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], limits[3])
 
     x_width = (x_max - x_min) / pointsPerAxis
     y_width = (y_max - y_min) / pointsPerAxis
@@ -97,6 +100,18 @@ def plotDensity3D(pointsPerAxis, limitsPath, valuesPath, colStrings):
 
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection='3d')
+
+    if scale_axes:
+        if not "SU2L" in inputDataPath:
+            if "GeV" in variable_list[colStrings[1]] and "GeV" in variable_list[colStrings[2]]:
+                x[x>1000] = np.nan
+                y[y>1000] = np.nan
+            elif "GeV" in variable_list[colStrings[1]]:
+                x[x>1000] = np.nan
+            elif "GeV" in variable_list[colStrings[2]]:
+                y[y>1000] = np.nan
+
+
     surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
     fig.colorbar(surf, ax=ax, label=r"$f_n$", location='right', aspect=30,pad=0.01,shrink=0.7)
     ax.set_xlabel(variable_list[colStrings[1]])
@@ -111,12 +126,10 @@ def plotDensity2D(pointsPerAxis, limitsPath, valuesPath, colStrings):
     limits = np.array(pd.read_parquet(limitsPath))[-1, -1]
     values = np.array(pd.read_parquet(valuesPath))[-1, -1]
 
-    x_min, x_max, y_min, y_max = limits[0], limits[1], limits[2], limits[3]
-
-    x_min = original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], x_min)
-    x_max = original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], x_max)
-    y_min = original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], y_min)
-    y_max = original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], y_max)
+    x_min = original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], limits[0])
+    x_max = original_value(scaling_factors[colStrings[1]]['min'], scaling_factors[colStrings[1]]['max'], limits[1])
+    y_min = original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], limits[2])
+    y_max = original_value(scaling_factors[colStrings[2]]['min'], scaling_factors[colStrings[2]]['max'], limits[3])
 
     x_width = (x_max - x_min) / pointsPerAxis
     y_width = (y_max - y_min) / pointsPerAxis
@@ -132,6 +145,16 @@ def plotDensity2D(pointsPerAxis, limitsPath, valuesPath, colStrings):
     fig, ax = plt.figure(figsize=(8, 6),tight_layout=True), plt.gca()
     heatmap = ax.imshow(z, cmap='coolwarm', extent=[x_min, x_max, y_min, y_max], origin='lower', aspect='auto')
     fig.colorbar(heatmap, ax=ax, label=r"$f_n$")
+
+    if scale_axes:
+        if not "SU2L" in inputDataPath:
+            if "GeV" in variable_list[colStrings[1]] and "GeV" in variable_list[colStrings[2]]:
+                ax.set_xlim(0,1000)
+                ax.set_ylim(0,1000)
+            elif "GeV" in variable_list[colStrings[1]]:
+                ax.set_xlim(0,1000)
+            elif "GeV" in variable_list[colStrings[2]]:
+                ax.set_ylim(0,1000)
 
 
     ax.set_xlabel(variable_list[colStrings[1]])
@@ -165,8 +188,6 @@ def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
     axs[0].yaxis.set_major_locator(FixedLocator(normalized_ticks))
     axs[0].set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=8)
     axs[0].set_yticklabels([f'{y:.1f}' for y in y_ticks],fontsize=8)
-
-
     axs[0].set_title("Original Distribution")
 
 
@@ -176,8 +197,9 @@ def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
     fig.colorbar(img, ax=axs[1], label='Counts')
     axs[1].set_xlabel(variable_list[colStrings[1]])
     axs[1].set_ylabel(variable_list[colStrings[2]])
-    axs[1].set_xlim(0,1)
-    axs[1].set_ylim(0,1)
+    if not scale_axes:
+        axs[1].set_xlim(0,1)
+        axs[1].set_ylim(0,1)
     axs[1].xaxis.set_major_locator(FixedLocator(normalized_ticks))
     axs[1].yaxis.set_major_locator(FixedLocator(normalized_ticks))
     axs[1].set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=8)
