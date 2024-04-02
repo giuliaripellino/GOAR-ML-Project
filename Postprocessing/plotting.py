@@ -41,12 +41,25 @@ if 'SU2L' in inputDataPath:
 else: scaling_factors_path = f"../scaling_factors_bkg.csv"
 
 saveFileName = f"figures_{colList[1]}_{colList[2]}.pdf"
-variable_list = {"deltaRLep2ndClosestBJet":r"$\Delta R(l,b_2)$","LJet_m_plus_RCJet_m_12":r"$m_{J^{lep}} + m_{J^{had}}$ [GeV]", "bb_m_for_minDeltaR":r"$m_{bb_{\Delta R_{min}}}$ [GeV]","HT":r"$H_T$ [GeV]"}
+variable_list = {"deltaRLep2ndClosestBJet":r"$\Delta R(l,b_2)$","LJet_m_plus_RCJet_m_12":r"$m_{\mathbb{J}^{had}}+ m_{\mathbb{J}^{lep}}$ [GeV]", "bb_m_for_minDeltaR":r"$m_{bb_{\Delta R_{min}}}$ [GeV]","HT":r"$H_T$ [GeV]"}
 
 ## -----------------------------
-scale_axes = false
+scale_axes = False
 ## -----------------------------
 
+def find_zero_limit(x,y,z, var1, var2):
+    # Find the indices where the heatmap has non-zero values
+    rows_with_heat = np.any(z > 0, axis=1)
+    cols_with_heat = np.any(z > 0, axis=0)
+
+    # Find the bounds
+    y_min_idx, y_max_idx = np.where(rows_with_heat)[0][[0, -1]]
+    x_min_idx, x_max_idx = np.where(cols_with_heat)[0][[0, -1]]
+
+    print(f"{var1}:",f"[{np.round(x[x_min_idx],2)},{np.round(x[x_max_idx],2)}]")
+    print(f"{var2}:",f"[{np.round(y[y_min_idx],2)},{np.round(y[y_max_idx],2)}]")
+
+    print(f"{var1} vs {var2}:[{np.round(x[x_min_idx],2)},{np.round(x[x_max_idx],2)}] x [{np.round(y[y_min_idx],2)},{np.round(y[y_max_idx],2)}]")
 def UnScaling(scaling_factors_path,variables):
     scaling_factors = {}
     with open(scaling_factors_path, mode='r') as file:
@@ -70,7 +83,7 @@ def save_plots_to_pdf_and_eps(file_path, plot_functions):
         for index, (plot_function, arguments) in enumerate(plot_functions):
             plt.figure()
             plot_function(*arguments)
-            #plt.tight_layout()
+            plt.tight_layout()
             pdf.savefig()
             eps_file_path = f"{base_file_path}_{index+1}.eps"
             plt.savefig(eps_file_path, format='eps',bbox_inches='tight')
@@ -113,13 +126,15 @@ def plotDensity3D(pointsPerAxis, limitsPath, valuesPath, colStrings):
 
 
     surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    fig.colorbar(surf, ax=ax, label=r"$f_n$", location='right', aspect=30,pad=0.01,shrink=0.7)
-    ax.set_xlabel(variable_list[colStrings[1]])
-    ax.set_ylabel(variable_list[colStrings[2]])
+    cbar = fig.colorbar(surf, ax=ax, location='right', aspect=30,pad=0.03,shrink=0.7)
+    ax.set_xlabel(variable_list[colStrings[1]], fontsize=12)
+    ax.set_ylabel(variable_list[colStrings[2]], fontsize=12)
+    cbar.ax.tick_params(labelsize=11)
+    cbar.set_label(label=r"$f_n$", size=12)
 
-    ax.tick_params(axis='x', labelsize=8, pad=0.01)
-    ax.tick_params(axis='y', labelsize=8, pad=0.01)
-    ax.tick_params(axis='z', labelsize=8, pad=0.5)
+    ax.tick_params(axis='x', labelsize=11, pad=0.01)
+    ax.tick_params(axis='y', labelsize=11, pad=0.01)
+    ax.tick_params(axis='z', labelsize=11, pad=0.5)
     ax.invert_xaxis()
 
 def plotDensity2D(pointsPerAxis, limitsPath, valuesPath, colStrings):
@@ -144,7 +159,9 @@ def plotDensity2D(pointsPerAxis, limitsPath, valuesPath, colStrings):
 
     fig, ax = plt.figure(figsize=(8, 6),tight_layout=True), plt.gca()
     heatmap = ax.imshow(z, cmap='coolwarm', extent=[x_min, x_max, y_min, y_max], origin='lower', aspect='auto')
-    fig.colorbar(heatmap, ax=ax, label=r"$f_n$")
+    cbar = fig.colorbar(heatmap, ax=ax)
+    cbar.ax.tick_params(labelsize=11)
+    cbar.set_label(label=r"$f_n$", size=12)
 
     if scale_axes:
         if not "SU2L" in inputDataPath:
@@ -156,9 +173,11 @@ def plotDensity2D(pointsPerAxis, limitsPath, valuesPath, colStrings):
             elif "GeV" in variable_list[colStrings[2]]:
                 ax.set_ylim(0,1000)
 
-
-    ax.set_xlabel(variable_list[colStrings[1]])
-    ax.set_ylabel(variable_list[colStrings[2]])
+    find_zero_limit(x,y,z,colStrings[1],colStrings[2])
+    ax.tick_params(axis='x', labelsize=11)
+    ax.tick_params(axis='y', labelsize=11)
+    ax.set_xlabel(variable_list[colStrings[1]],fontsize=12)
+    ax.set_ylabel(variable_list[colStrings[2]],fontsize=12)
 
 def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
     limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
@@ -180,31 +199,36 @@ def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
     xbins_original = np.linspace(scaled_input_data[colStrings[1]].min(), scaled_input_data[colStrings[1]].max(), 50)
     ybins_original = np.linspace(scaled_input_data[colStrings[2]].min(), scaled_input_data[colStrings[2]].max(), 50)
     h_original, xedges_original, yedges_original, img_original = axs[0].hist2d(scaled_input_data[colStrings[1]], scaled_input_data[colStrings[2]], bins=[xbins_original, ybins_original], cmap='coolwarm')
-    fig.colorbar(img_original, ax=axs[0], label='Counts')
-    axs[0].set_xlabel(variable_list[colStrings[1]])
-    axs[0].set_ylabel(variable_list[colStrings[2]])
+    cbar0 = fig.colorbar(img_original, ax=axs[0])
+    cbar0.ax.tick_params(labelsize=11)
+    cbar0.set_label(label=r"Counts", size=12)
+    axs[0].set_xlabel(variable_list[colStrings[1]],fontsize=12)
+    axs[0].set_ylabel(variable_list[colStrings[2]],fontsize=12)
 
     axs[0].xaxis.set_major_locator(FixedLocator(normalized_ticks))
     axs[0].yaxis.set_major_locator(FixedLocator(normalized_ticks))
-    axs[0].set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=8)
-    axs[0].set_yticklabels([f'{y:.1f}' for y in y_ticks],fontsize=8)
-    axs[0].set_title("Original Distribution")
+    axs[0].set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=11)
+    axs[0].set_yticklabels([f'{y:.1f}' for y in y_ticks],fontsize=11)
+    axs[0].set_title("Original Distribution",fontsize=15)
 
 
     xbins = np.linspace(xs[0, :].min(), xs[0, :].max(), 50)
     ybins = np.linspace(xs[1, :].min(), xs[1, :].max(), 50)
     h, xedges, yedges, img = axs[1].hist2d(xs[0, :], xs[1, :], bins=[xbins, ybins], cmap='coolwarm')
-    fig.colorbar(img, ax=axs[1], label='Counts')
-    axs[1].set_xlabel(variable_list[colStrings[1]])
-    axs[1].set_ylabel(variable_list[colStrings[2]])
-    if not scale_axes:
+    cbar = fig.colorbar(img, ax=axs[1])
+    cbar.ax.tick_params(labelsize=11)
+    cbar.set_label(label=r"Counts", size=12)
+
+    axs[1].set_xlabel(variable_list[colStrings[1]],fontsize=12)
+    axs[1].set_ylabel(variable_list[colStrings[2]],fontsize=12)
+    if scale_axes:
         axs[1].set_xlim(0,1)
         axs[1].set_ylim(0,1)
     axs[1].xaxis.set_major_locator(FixedLocator(normalized_ticks))
     axs[1].yaxis.set_major_locator(FixedLocator(normalized_ticks))
-    axs[1].set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=8)
-    axs[1].set_yticklabels([f'{y:.1f}' for y in y_ticks],fontsize=8)
-    axs[1].set_title("Distribution from method")
+    axs[1].set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=11)
+    axs[1].set_yticklabels([f'{y:.1f}' for y in y_ticks],fontsize=11)
+    axs[1].set_title("Distribution from method",fontsize=15)
 
 plot_functions = [
     (plotDensity3D,(pointsPerAxis, limitsPath, valuesPath,colList)),
