@@ -54,11 +54,11 @@ object SparksInTheDarkMain {
     val kInMDE = 10
     val numCores = 8 // Number of cores in cluster
 
-    val pointsPerAxis = 256 // Important parameter for d-dimensional nested for-loop. The larger value, the slower it will be. Time-complexity is O(pointsPerAxis^dimensions)
+    val pointsPerAxis = 256
     val DensityPercentage = 1
 
     val StringSigBkg: String = if (RunBackground) {"bkg"} else {"signal"}
-    val prefix: String = s"ovearleaf_pt1_tailProb${(DensityPercentage*100).toInt}_${StringSigBkg}_count${minimumCountLimit}_res${finestResSideLength}_axes/" // Supposed to define the output folder in "SparksInTheDark/output/"
+    val prefix: String = s"limits_pt2_tailProb${(DensityPercentage*100).toInt}_${StringSigBkg}_count${minimumCountLimit}_res${finestResSideLength}/" // Supposed to define the output folder in "SparksInTheDark/output/"
     // ===============================================================================
 
     // Defining paths
@@ -298,7 +298,6 @@ object SparksInTheDarkMain {
       val ColStrings = List(col1,col2)
       val process = Process(Seq("python3",plottingScriptPath,passString,pointsPerAxis.toString, margin_dimension.toString, originalDataPath,ColStrings.toString)).run()
       process.exitValue()
-
 
 
     }
