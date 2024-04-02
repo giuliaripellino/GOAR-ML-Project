@@ -42,11 +42,11 @@ object SparksInTheDarkMain {
     // ============================= PARAMETER LIST ==================================
     val gcloudRunning: Boolean = false // local running (i.e. false) is mostly used for testing
 
-    val RunBackground: Boolean = true // if false, we run on signal. if true, we run on background
+    val RunBackground: Boolean = false // if false, we run on signal. if true, we run on background
 
     val Filtering: Boolean = false
 
-    val numTrainingPartitions = 1000
+    val numTrainingPartitions = 100
     val finestResSideLength = 1e-5
     val sampleSizeHint = 1000
     val minimumCountLimit = 1
@@ -58,7 +58,7 @@ object SparksInTheDarkMain {
     val DensityPercentage = 1
 
     val StringSigBkg: String = if (RunBackground) {"bkg"} else {"signal"}
-    val prefix: String = s"4D_marginalization_tailProb${(DensityPercentage*100).toInt}_${StringSigBkg}_count${minimumCountLimit}_res${finestResSideLength}/" // Supposed to define the output folder in "SparksInTheDark/output/"
+    val prefix: String = s"ovearleaf_pt1_tailProb${(DensityPercentage*100).toInt}_${StringSigBkg}_count${minimumCountLimit}_res${finestResSideLength}_axes/" // Supposed to define the output folder in "SparksInTheDark/output/"
     // ===============================================================================
 
     // Defining paths
