@@ -34,7 +34,7 @@ object SparksInTheDarkMain {
     val sc: SparkContext = spark.sparkContext
     val sqlContext = new SQLContext(sc) // Only way to get "toDS" working
     import sqlContext.implicits._
-
+    val startTime = System.nanoTime()
     // Reduces INFO print statements in terminal
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
@@ -58,7 +58,7 @@ object SparksInTheDarkMain {
     val DensityPercentage = 1
 
     val StringSigBkg: String = if (RunBackground) {"bkg"} else {"signal"}
-    val prefix: String = s"limits_pt2_tailProb${(DensityPercentage*100).toInt}_${StringSigBkg}_count${minimumCountLimit}_res${finestResSideLength}/" // Supposed to define the output folder in "SparksInTheDark/output/"
+    val prefix: String = s"limits_pt3_tailProb_timing${(DensityPercentage*100).toInt}_${StringSigBkg}_count${minimumCountLimit}_res${finestResSideLength}/" // Supposed to define the output folder in "SparksInTheDark/output/"
     // ===============================================================================
 
     // Defining paths
@@ -220,16 +220,24 @@ object SparksInTheDarkMain {
 
       val x4Width = rootCell.high(0) - rootCell.low(0)
       val x6Width = rootCell.high(1) - rootCell.low(1)
-
+      println(DensityPercentage)
+      println(coverage)
       val values : Array[Double] = new Array(pointsPerAxis * pointsPerAxis)
       for (i <- 0 until pointsPerAxis) {
         val x4_p = rootCell.low(0) + (i + 0.5) * (x4Width / pointsPerAxis)
         for (j <- 0 until pointsPerAxis) {
           val x6_p = rootCell.low(1) + (j + 0.5) * (x6Width / pointsPerAxis)
-          if (coverageRegions.query(Vectors.dense(x4_p, x6_p)) <= coverage)
-            values(i * pointsPerAxis + j) = density.density(Vectors.dense(x4_p, x6_p))
-          else
-            values(i * pointsPerAxis + j) = 0.0
+          if (coverage > 0) {
+            if (coverageRegions.query(Vectors.dense(x4_p, x6_p)) <= coverage)
+              values(i * pointsPerAxis + j) = density.density(Vectors.dense(x4_p, x6_p))
+            else
+              values(i * pointsPerAxis + j) = 0.0
+          } else {
+            if (coverageRegions.query(Vectors.dense(x4_p, x6_p)) >= abs(coverage))
+              values(i * pointsPerAxis + j) = density.density(Vectors.dense(x4_p, x6_p))
+            else
+              values(i * pointsPerAxis + j) = 0.0
+          }
         }
       }
       Array(values).toIterable.toSeq.toDS.write.mode("overwrite").parquet(plotValuesPath)
@@ -315,6 +323,9 @@ object SparksInTheDarkMain {
    // .
    // .
    */
+    val endTime = System.nanoTime()
+    val duration = (endTime - startTime) / 1e9d  // Convert milliseconds to seconds
+    println(s"The process took $duration seconds")
     spark.stop()
     println("Stopping SparkSession...")
 

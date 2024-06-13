@@ -44,7 +44,7 @@ saveFileName = f"figures_{colList[1]}_{colList[2]}.pdf"
 variable_list = {"deltaRLep2ndClosestBJet":r"$\Delta R(l,b_2)$","LJet_m_plus_RCJet_m_12":r"$m_{\mathbb{J}^{had}}+ m_{\mathbb{J}^{lep}}$ [GeV]", "bb_m_for_minDeltaR":r"$m_{bb_{\Delta R_{min}}}$ [GeV]","HT":r"$H_T$ [GeV]"}
 
 ## -----------------------------
-scale_axes = False
+scale_axes = True
 ## -----------------------------
 
 def find_zero_limit(x,y,z, var1, var2):
@@ -115,22 +115,22 @@ def plotDensity3D(pointsPerAxis, limitsPath, valuesPath, colStrings):
     ax = fig.add_subplot(111, projection='3d')
 
     if scale_axes:
-        if not "SU2L" in inputDataPath:
-            if "GeV" in variable_list[colStrings[1]] and "GeV" in variable_list[colStrings[2]]:
-                x[x>1000] = np.nan
-                y[y>1000] = np.nan
-            elif "GeV" in variable_list[colStrings[1]]:
-                x[x>1000] = np.nan
-            elif "GeV" in variable_list[colStrings[2]]:
-                y[y>1000] = np.nan
+        #if not "SU2L" in inputDataPath:
+        if "GeV" in variable_list[colStrings[1]] and "GeV" in variable_list[colStrings[2]]:
+            x[x>1400] = np.nan
+            y[y>3000] = np.nan
+            #elif "GeV" in variable_list[colStrings[1]]:
+            #    x[x>1000] = np.nan
+            #elif "GeV" in variable_list[colStrings[2]]:
+            #    y[y>1000] = np.nan
 
 
     surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
     cbar = fig.colorbar(surf, ax=ax, location='right', aspect=30,pad=0.03,shrink=0.7)
-    ax.set_xlabel(variable_list[colStrings[1]], fontsize=12)
-    ax.set_ylabel(variable_list[colStrings[2]], fontsize=12)
+    ax.set_xlabel(variable_list[colStrings[1]], fontsize=14)
+    ax.set_ylabel(variable_list[colStrings[2]], fontsize=14)
     cbar.ax.tick_params(labelsize=11)
-    cbar.set_label(label=r"$f_n$", size=12)
+    cbar.set_label(label=r"$f_n$", size=14)
 
     ax.tick_params(axis='x', labelsize=11, pad=0.01)
     ax.tick_params(axis='y', labelsize=11, pad=0.01)
@@ -156,28 +156,53 @@ def plotDensity2D(pointsPerAxis, limitsPath, valuesPath, colStrings):
         for j in range(pointsPerAxis):
             z[i, j] = values[i * pointsPerAxis + j]
     z = z.T
+    """"
+    z_masked = np.ma.array(z, mask=(z==0))
 
+    # Initialize min and max coordinates
+    x_limits = [np.inf, -np.inf]
+    y_limits = [np.inf, -np.inf]
+    zero_indices = np.argwhere(z==0)
+    # Update the min/max coordinates based on indices
+    for index in zero_indices:
+        y_idx, x_idx = index  # Notice the order of indices (y, x) because z was transposed
+        x_limits = [min(x_limits[0], x[x_idx]), max(x_limits[1], x[x_idx])]
+        y_limits = [min(y_limits[0], y[y_idx]), max(y_limits[1], y[y_idx])]
+
+    # Output the calculated limits
+    print("ANTI LIMITS")
+    print(f"{colStrings[1]} limits where z is zero: {np.round(x_limits,2)}")
+    print(f"{colStrings[2]} limits where z is zero: {np.round(y_limits,2)}")
+    print(f"{colStrings[1]} vs {colStrings[2]}: {np.round(x_limits,2)} x {np.round(y_limits,2)}")
+
+    print("======================================================")
+
+    # Custom colormap: use coolwarm but map zero values to white
+    cmap = plt.get_cmap('coolwarm')
+    cmap.set_bad('white')
+    """
     fig, ax = plt.figure(figsize=(8, 6),tight_layout=True), plt.gca()
     heatmap = ax.imshow(z, cmap='coolwarm', extent=[x_min, x_max, y_min, y_max], origin='lower', aspect='auto')
+    #heatmap = ax.imshow(z_masked, cmap=cmap, extent=[x_min, x_max, y_min, y_max], origin='lower', aspect='auto')
     cbar = fig.colorbar(heatmap, ax=ax)
     cbar.ax.tick_params(labelsize=11)
-    cbar.set_label(label=r"$f_n$", size=12)
+    cbar.set_label(label=r"$f_n$", size=14)
 
     if scale_axes:
-        if not "SU2L" in inputDataPath:
-            if "GeV" in variable_list[colStrings[1]] and "GeV" in variable_list[colStrings[2]]:
-                ax.set_xlim(0,1000)
-                ax.set_ylim(0,1000)
-            elif "GeV" in variable_list[colStrings[1]]:
-                ax.set_xlim(0,1000)
-            elif "GeV" in variable_list[colStrings[2]]:
-                ax.set_ylim(0,1000)
+        #if not "SU2L" in inputDataPath:
+        if "GeV" in variable_list[colStrings[1]] and "GeV" in variable_list[colStrings[2]]:
+            ax.set_xlim(x_min,1400)
+            ax.set_ylim(y_min,3000)
+            #elif "GeV" in variable_list[colStrings[1]]:
+            #    ax.set_xlim(0,1000)
+            #elif "GeV" in variable_list[colStrings[2]]:
+            #    ax.set_ylim(0,1000)
 
     find_zero_limit(x,y,z,colStrings[1],colStrings[2])
     ax.tick_params(axis='x', labelsize=11)
     ax.tick_params(axis='y', labelsize=11)
-    ax.set_xlabel(variable_list[colStrings[1]],fontsize=12)
-    ax.set_ylabel(variable_list[colStrings[2]],fontsize=12)
+    ax.set_xlabel(variable_list[colStrings[1]],fontsize=14)
+    ax.set_ylabel(variable_list[colStrings[2]],fontsize=14)
 
 def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
     limits = np.array(pd.read_parquet(limitsPath))[-1,-1]
@@ -214,16 +239,17 @@ def scatterPlot(dimensions, limitsPath, samplePath,colStrings):
 
     xbins = np.linspace(xs[0, :].min(), xs[0, :].max(), 50)
     ybins = np.linspace(xs[1, :].min(), xs[1, :].max(), 50)
-    h, xedges, yedges, img = axs[1].hist2d(xs[0, :], xs[1, :], bins=[xbins, ybins], cmap='coolwarm')
+    h, xedges, yedges, img = axs[1].hist2d(xs[0, :], xs[1, :], bins=[xbins_original, ybins_original], cmap='coolwarm')
     cbar = fig.colorbar(img, ax=axs[1])
     cbar.ax.tick_params(labelsize=11)
-    cbar.set_label(label=r"Counts", size=12)
+    cbar.set_label(label=r"Counts", size=14)
 
-    axs[1].set_xlabel(variable_list[colStrings[1]],fontsize=12)
-    axs[1].set_ylabel(variable_list[colStrings[2]],fontsize=12)
-    if scale_axes:
-        axs[1].set_xlim(0,1)
-        axs[1].set_ylim(0,1)
+    axs[1].set_xlabel(variable_list[colStrings[1]],fontsize=14)
+    axs[1].set_ylabel(variable_list[colStrings[2]],fontsize=14)
+    #if scale_axes:
+    #    axs[1].set_xlim(0,1)
+    #    axs[1].set_ylim(0,1)
+    #axs[1].set_xlim(0.5,57)
     axs[1].xaxis.set_major_locator(FixedLocator(normalized_ticks))
     axs[1].yaxis.set_major_locator(FixedLocator(normalized_ticks))
     axs[1].set_xticklabels([f'{x:.1f}' for x in x_ticks],fontsize=11)
